@@ -36,6 +36,8 @@ create table if not exists shipping_batches (
     id uuid primary key default gen_random_uuid(),
     batch_code text not null unique,
     hub_id uuid not null references hubs(id),
+    origin_port text,
+    destination_port text,
     destination_city text not null default 'Nabire',
     service_type text not null check (service_type in ('hemat', 'cepat', 'express')),
     transport_mode text not null check (transport_mode in ('kapal_kargo', 'kapal_penumpang', 'pesawat')),
