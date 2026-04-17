@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: warekcargo-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/home/node/.n8n
+      - /var/lib/warekcargo:/var/lib/warekcargo
+    networks:
+      - warekcargo_net
+
+networks:
+  warekcargo_net:
+    driver: bridge
