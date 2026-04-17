@@ -110,7 +110,10 @@ create table if not exists customer_shipments (
     total_weight_kg numeric(10,2),
     total_volume_m3 numeric(10,4),
     final_charge_amount numeric(14,2),
+    amount_paid numeric(14,2) not null default 0,
+    payment_method text check (payment_method in ('pay_on_pickup', 'bank_transfer', 'cash', 'other')),
     payment_status text not null default 'pending' check (payment_status in ('pending', 'partial', 'paid', 'cancelled')),
+    payment_due_at timestamptz,
     shipment_status text not null default 'draft' check (shipment_status in (
         'draft',
         'awaiting_packages',
@@ -128,6 +131,17 @@ create table if not exists customer_shipments (
     notes text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
+);
+
+create table if not exists shipment_payment_proofs (
+    id uuid primary key default gen_random_uuid(),
+    shipment_id uuid not null references customer_shipments(id) on delete cascade,
+    file_path text not null,
+    original_filename text,
+    mime_type text,
+    uploaded_by text,
+    notes text,
+    uploaded_at timestamptz not null default now()
 );
 
 create table if not exists shipment_packages (
@@ -160,6 +174,8 @@ create index if not exists idx_shipping_batches_hub_id on shipping_batches(hub_i
 create index if not exists idx_shipping_batches_status on shipping_batches(status);
 create index if not exists idx_customer_shipments_customer_id on customer_shipments(customer_id);
 create index if not exists idx_customer_shipments_batch_id on customer_shipments(batch_id);
+create index if not exists idx_customer_shipments_payment_status on customer_shipments(payment_status);
+create index if not exists idx_shipment_payment_proofs_shipment_id on shipment_payment_proofs(shipment_id);
 create index if not exists idx_notifications_log_customer_id on notifications_log(customer_id);
 
 create or replace function set_updated_at()
