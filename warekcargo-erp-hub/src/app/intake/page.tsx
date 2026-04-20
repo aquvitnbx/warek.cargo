@@ -1,72 +1,66 @@
-import React from 'react';
 import { submitIncomingPackage } from './actions';
 
 export default function HubDashboard() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">WarekCargo Hub</h1>
-          <p className="text-gray-500">Pindai / Input Barang Masuk Gudang</p>
-        </div>
+    <div className="max-w-2xl mx-auto space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      <div className="glass-panel p-6 rounded-3xl border border-cyan-500/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2 mb-2">
+           <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">⚡</span> Intake Scanner
+        </h1>
+        <p className="text-sm font-medium text-slate-400 border-b border-white/5 pb-4 mb-6">
+          Pindai paket, tangkap gambar S3, dan konsolidasikan ke Gudang Jakarta.
+        </p>
 
-        <form action={submitIncomingPackage} className="space-y-6">
+        <form action={submitIncomingPackage} className="space-y-5 relative z-10">
           <div>
-            <label htmlFor="tracking_number" className="block text-sm font-semibold text-gray-700 mb-2">
-              Nomor Resi 📦
-            </label>
-            <input
-              type="text"
-              name="tracking_number"
-              id="tracking_number"
-              className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Contoh: JP1234567890"
-              required
+            <label className="block text-xs font-bold text-cyan-300 uppercase tracking-widest mb-2">Resi Ekspedisi Lokal (Tracking No)</label>
+            <input 
+              type="text" 
+              name="tracking_number" 
+              required 
+              placeholder="Contoh: JX291938194..." 
+              className="w-full p-4 bg-slate-900/50 border border-white/10 rounded-xl font-mono text-cyan-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner"
             />
           </div>
 
           <div>
-            <label htmlFor="hub_id" className="block text-sm font-semibold text-gray-700 mb-2">
-              📍 Lokasi Hub
-            </label>
-            <select
-              id="hub_id"
-              name="hub_id"
-              className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              <option value="JKT">Jakarta</option>
-              <option value="SUB">Surabaya</option>
-              <option value="MKS">Makassar</option>
-            </select>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kurir / Pengirim (Opsional)</label>
+            <input 
+              type="text" 
+              name="sender_name" 
+              placeholder="JNE, AnterAja, atau nama penantar" 
+              className="w-full p-4 bg-slate-900/50 border border-white/10 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              📷 Foto Bukti Kedatangan
-            </label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-400 transition-colors">
-              <div className="space-y-1 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <div className="flex text-sm text-gray-600 justify-center">
-                  <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                    <span>Unggah atau Foto</span>
-                    <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" capture="environment" />
-                  </label>
-                </div>
-              </div>
-            </div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Deskripsi Barang (Opsional)</label>
+            <textarea 
+              name="item_description" 
+              placeholder="Kondisi kotak, warna, ciri-ciri..."
+              rows={2}
+              className="w-full p-4 bg-slate-900/50 border border-white/10 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner resize-none"
+            ></textarea>
           </div>
 
-          <button
-            type="submit"
-            className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-blue-500/30"
+          <div className="p-5 bg-cyan-900/20 border border-cyan-500/20 rounded-2xl flex flex-col items-center justify-center border-dashed group hover:bg-cyan-900/30 transition-colors cursor-pointer">
+            <span className="text-3xl mb-2 group-hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">📸</span>
+            <span className="text-sm font-bold text-cyan-300">Ambil Foto / Unggah ke S3</span>
+            <input type="file" name="package_photo" accept="image/*" capture="environment" className="mt-4 text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/40 cursor-pointer w-full max-w-xs" />
+          </div>
+
+          <button 
+            type="submit" 
+            className="w-full p-4 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95 transition-all outline-none"
           >
-            SImpan ke Database
+            TERIMA PAKET
           </button>
         </form>
       </div>
+
     </div>
   );
 }

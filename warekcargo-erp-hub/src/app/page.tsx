@@ -1,7 +1,7 @@
 import pool from '@/lib/db';
 import Link from 'next/link';
 
-export const revalidate = 0; // Disable static caching
+export const revalidate = 0; 
 
 export default async function DashboardOwner() {
   let totalToday = 0;
@@ -22,56 +22,80 @@ export default async function DashboardOwner() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Ringkasan Hari Ini</h2>
-        <p className="text-slate-500 mt-2 text-sm md:text-base">Mata rajawali untuk memantau pergerakan gudang WarekCargo Anda.</p>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-md">Command <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">Nexus</span></h2>
+          <p className="text-slate-400 mt-2 text-sm md:text-base font-medium">Sistem pemantauan orbit kargo WarekCargo (Internal Only).</p>
+        </div>
+        <div className="hidden md:flex items-center gap-3 glass-card px-5 py-2.5 rounded-full">
+           <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div>
+           <span className="text-sm font-bold text-cyan-100 tracking-wider">LIVE TELEMETRY</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
         {/* Metric Card 1 */}
-        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col hover:-translate-y-1 transition-transform relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50"></div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest relative z-10">Total Paket Masuk</span>
-          <span className="text-5xl font-black text-blue-600 mt-3 relative z-10">{totalToday}</span>
+        <div className="glass-card p-6 md:p-8 rounded-3xl flex flex-col relative overflow-hidden group">
+          <div className="absolute -right-10 -top-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-2xl group-hover:bg-cyan-500/30 transition-colors"></div>
+          <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] relative z-10 flex items-center gap-2">
+             <span className="text-cyan-400">⚡</span> Masuk Hari Ini
+          </span>
+          <span className="text-6xl font-black text-white mt-4 relative z-10 group-hover:scale-105 transition-transform origin-left">{totalToday}</span>
         </div>
 
         {/* Metric Card 2 */}
-        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col hover:-translate-y-1 transition-transform relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50"></div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest relative z-10">Timbunan di Hub</span>
-          <span className="text-5xl font-black text-emerald-500 mt-3 relative z-10">{packagesAtHub}</span>
+        <div className="glass-card p-6 md:p-8 rounded-3xl flex flex-col relative overflow-hidden group">
+          <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
+          <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] relative z-10 flex items-center gap-2">
+             <span className="text-emerald-400">📦</span> Tertahan di Hub
+          </span>
+          <span className="text-6xl font-black text-white mt-4 relative z-10 group-hover:scale-105 transition-transform origin-left">{packagesAtHub}</span>
         </div>
 
         {/* Metric Card 3 */}
-        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col hover:-translate-y-1 transition-transform relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-50 rounded-full opacity-50"></div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest relative z-10">Jadwal Kapal Aktif</span>
-          <span className="text-5xl font-black text-amber-500 mt-3 relative z-10">{activeBatches}</span>
+        <div className="glass-card p-6 md:p-8 rounded-3xl flex flex-col relative overflow-hidden group">
+          <div className="absolute -right-10 -top-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/30 transition-colors"></div>
+          <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] relative z-10 flex items-center gap-2">
+             <span className="text-indigo-400">🚢</span> Voyage Aktif
+          </span>
+          <span className="text-6xl font-black text-white mt-4 relative z-10 group-hover:scale-105 transition-transform origin-left">{activeBatches}</span>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden mt-6">
+      <div className="glass-panel rounded-3xl overflow-hidden mt-8 border border-white/10 shadow-2xl relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 opacity-50"></div>
         <div className="p-6 md:p-8">
-           <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center justify-between">
-              Akses Cepat Modul ⚡
+           <h3 className="text-xl font-bold text-white mb-6 uppercase tracking-widest text-sm flex items-center gap-3 opacity-90">
+              <span className="w-6 h-[1px] bg-cyan-400/50"></span> Quick Launch
            </h3>
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Link href="/intake" className="group flex flex-col items-center justify-center p-6 md:p-8 bg-slate-50 hover:bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl hover:text-blue-600 transition-all border border-slate-200/60 shadow-sm">
-                 <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">➕</span>
-                 <span className="font-bold text-xs md:text-sm text-center">Terima Barcode</span>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              <Link href="/intake" className="glass-card group flex flex-col items-center justify-center p-6 md:p-8 rounded-2xl hover:border-cyan-500/50 transition-all cursor-pointer">
+                 <div className="w-14 h-14 rounded-full bg-cyan-500/10 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors shadow-[0_0_15px_rgba(6,182,212,0)] group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                   <span className="text-2xl group-hover:scale-125 transition-transform drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">➕</span>
+                 </div>
+                 <span className="font-bold text-xs md:text-sm text-center text-slate-300 group-hover:text-white uppercase tracking-wider">Terima<br/>Scanner</span>
               </Link>
-              <Link href="/packages" className="group flex flex-col items-center justify-center p-6 md:p-8 bg-slate-50 hover:bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-2xl hover:text-purple-600 transition-all border border-slate-200/60 shadow-sm">
-                 <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">📦</span>
-                 <span className="font-bold text-xs md:text-sm text-center">Daftar Manifest</span>
+              
+              <Link href="/packages" className="glass-card group flex flex-col items-center justify-center p-6 md:p-8 rounded-2xl hover:border-indigo-500/50 transition-all cursor-pointer">
+                 <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-colors shadow-[0_0_15px_rgba(99,102,241,0)] group-hover:shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                   <span className="text-2xl group-hover:scale-125 transition-transform drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]">📦</span>
+                 </div>
+                 <span className="font-bold text-xs md:text-sm text-center text-slate-300 group-hover:text-white uppercase tracking-wider">Data<br/>Manifest</span>
               </Link>
-              <Link href="/batches" className="group flex flex-col items-center justify-center p-6 md:p-8 bg-slate-50 hover:bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl hover:text-emerald-600 transition-all border border-slate-200/60 shadow-sm">
-                 <span className="text-3xl mb-3 group-hover:scale-110 transition-transform">🚢</span>
-                 <span className="font-bold text-xs md:text-sm text-center">Jadwal Kapal</span>
+              
+              <Link href="/batches" className="glass-card group flex flex-col items-center justify-center p-6 md:p-8 rounded-2xl hover:border-emerald-500/50 transition-all cursor-pointer">
+                 <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors shadow-[0_0_15px_rgba(16,185,129,0)] group-hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                   <span className="text-2xl group-hover:scale-125 transition-transform drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]">🚢</span>
+                 </div>
+                 <span className="font-bold text-xs md:text-sm text-center text-slate-300 group-hover:text-white uppercase tracking-wider">Armada<br/>Kapal</span>
               </Link>
-              <div className="group flex flex-col items-center justify-center p-6 md:p-8 bg-slate-50/50 rounded-2xl text-slate-400 border border-slate-200/60 shadow-sm cursor-not-allowed opacity-60">
-                 <span className="text-3xl mb-3 grayscale">📊</span>
-                 <span className="font-bold text-xs md:text-sm text-center">Laporan Keuangan</span>
+
+              <div className="glass-card opacity-40 group flex flex-col items-center justify-center p-6 md:p-8 rounded-2xl cursor-not-allowed border-transparent">
+                 <div className="w-14 h-14 rounded-full bg-slate-800/50 flex items-center justify-center mb-4 border border-slate-700">
+                   <span className="text-2xl grayscale opacity-50">🔒</span>
+                 </div>
+                 <span className="font-bold text-xs md:text-sm text-center text-slate-500 uppercase tracking-wider">Accounting<br/>(Coming Soon)</span>
               </div>
            </div>
         </div>
