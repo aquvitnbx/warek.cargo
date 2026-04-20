@@ -1,0 +1,14 @@
+# Keamanan Akses VPS
+*.pem
+WarekCargo.pem
+
+# Kredensial Database Terbuka
+database_credentials.txt
+*.env
+*.env.local
+
+# Folder Cache lokal 
+.scratch/
+.openclaw/
+node_modules/
+.DS_Store

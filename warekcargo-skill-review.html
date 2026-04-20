@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "warekcargo-context", "runs": [{"id": "eval-0-pricing-with_skill", "prompt": "Saya mau kirim barang 10kg dari Surabaya ke Nabire. Berapa biaya dan berapa lama sampainya? Apa saja pilihan layanannya?", "eval_id": 0, "outputs": [{"name": "response.txt", "type": "text", "content": "Halo! Berikut informasi lengkap untuk pengiriman barang 10kg dari Surabaya ke Nabire:\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nPILIHAN LAYANAN WAREKCARGO:\n\n1. LAYANAN HEMAT (Kapal Kargo)\n   \u2022 Waktu pengiriman: 10\u201314 hari\n   \u2022 Harga: Rp 10.000\u201312.000/kg\n   \u2022 Biaya untuk 10kg: Rp 100.000\u2013120.000\n   \u2022 Kelebihan: Paling murah, cocok untuk barang yang tidak urgent\n   \u2022 Catatan: Kapal berangkat mingguan, cut-off hari Jumat\n\n2. LAYANAN CEPAT (Kapal Penumpang)\n   \u2022 Waktu pengiriman: 6\u20138 hari\n   \u2022 Harga: Rp 15.000\u201318.000/kg\n   \u2022 Biaya untuk 10kg: Rp 150.000\u2013180.000\n   \u2022 Kelebihan: Lebih cepat, harga masih terjangkau\n   \u2022 Catatan: Kapal berangkat mingguan, cut-off hari Jumat\n\n3. LAYANAN EXPRESS (Pesawat)\n   \u2022 Waktu pengiriman: 2\u20134 hari\n   \u2022 Harga: > Rp 50.000/kg\n   \u2022 Biaya untuk 10kg: > Rp 500.000\n   \u2022 Kelebihan: Paling cepat untuk kebutuhan mendesak\n   \u2022 Catatan: Gunakan jika barang urgent\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nRINGKASAN HARGA & WAKTU (10kg dari Surabaya):\n\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Layanan          \u2502 Harga (10kg)    \u2502 Waktu Tiba   \u2502 Cut-off      \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 HEMAT            \u2502 Rp 100-120rb    \u2502 10-14 hari   \u2502 Jumat (H-2)  \u2502\n\u2502 CEPAT            \u2502 Rp 150-180rb    \u2502 6-8 hari     \u2502 Jumat (H-2)  \u2502\n\u2502 EXPRESS          \u2502 > Rp 500rb      \u2502 2-4 hari     \u2502 Fleksibel    \u2502\n\u2502 Antar ke rumah   \u2502 Biaya terpisah  \u2502 1-3 hari     \u2502 \u2013            \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nCARA PESAN:\n\n1. Kirim barang ke HUB PENAMPUNGAN Surabaya\n   - Hub kami terima dari Senin\u2013Kamis\n   - Barang dikemas rapi & disiapkan untuk kapal\n\n2. Tunggu batch kapal sesuai jadwal mingguan\n   - Barang dikonsolidasi dengan pengiriman lainnya\n   - Kapal berangkat hari Minggu (ETD)\n\n3. Barang tiba di Nabire dalam 6\u201314 hari (tergantung layanan)\n   - Kami terima di agen Nabire\n   - Siap diambil atau diantar ke rumah\n\n4. Ambil barang atau minta diantar\n   - Pengambilan langsung di agen gratis\n   - Pengiriman ke rumah ada biaya tambahan terpisah\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nTIPS HEMAT:\n\n\u2022 Gunakan LAYANAN HEMAT (Rp 100-120rb) jika barang tidak urgent\n\u2022 Bandingkan dengan kompetitor di Nabire yang hanya menawarkan kapal\n  penumpang (Rp 15-18rb/kg) \u2014 WarekCargo lebih murah!\n\u2022 Kirim barang sebelum Jumat (cut-off) agar masuk batch minggu itu\n\u2022 Paket mingguan lebih efficient dibanding pengiriman satuan\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nAda pertanyaan lain? Silakan tanya tentang:\n\u2713 Status pengiriman barang\n\u2713 Jadwal kapal berikutnya\n\u2713 Daftar pengiriman baru\n\u2713 Informasi cut-off dan estimasi tiba\n\u2713 Layanan antar ke rumah\n\nTerima kasih sudah memilih WarekCargo! \ud83d\udea2\n"}], "grading": {"eval_id": 0, "run": "with_skill", "expectations": [{"text": "menyebut_tiga_layanan: Respons menyebut ketiga pilihan layanan: HEMAT/kapal kargo, CEPAT/kapal penumpang, dan EXPRESS/pesawat", "passed": true, "evidence": "Respons menyebut LAYANAN HEMAT (Kapal Kargo), LAYANAN CEPAT (Kapal Penumpang), dan LAYANAN EXPRESS (Pesawat) dengan jelas"}, {"text": "harga_akurat: Harga yang disebutkan akurat sesuai konteks WarekCargo", "passed": true, "evidence": "Harga akurat: Hemat Rp 10.000-12.000/kg, Cepat Rp 15.000-18.000/kg, Express >Rp 50.000/kg"}, {"text": "estimasi_waktu_akurat: Estimasi waktu akurat sesuai konteks WarekCargo", "passed": true, "evidence": "Waktu akurat: Kargo 10-14 hari, Penumpang 6-8 hari, Pesawat 2-4 hari"}], "pass_rate": 1.0}}, {"id": "eval-0-pricing-without_skill", "prompt": "Saya mau kirim barang 10kg dari Surabaya ke Nabire. Berapa biaya dan berapa lama sampainya? Apa saja pilihan layanannya?", "eval_id": 0, "outputs": [{"name": "response.txt", "type": "text", "content": "Untuk mengirim barang 10kg dari Surabaya ke Nabire, berikut informasi umum yang perlu Anda ketahui:\n\nPERKIRAAN BIAYA:\n- Biaya pengiriman untuk jarak jauh seperti Surabaya ke Nabire (Papua) biasanya berkisar antara Rp 500.000 - Rp 2.000.000 tergantung layanan yang dipilih\n- Semakin cepat pengiriman, semakin mahal biayanya\n- Berat 10kg termasuk paket sedang, sehingga mungkin ada biaya tambahan jika ada dimensi yang terlalu besar\n\nESTIMASI WAKTU PENGIRIMAN:\n- Layanan standar: 7-14 hari kerja\n- Layanan ekspres: 3-5 hari kerja\n- Layanan kilat: 1-2 hari kerja (jika tersedia)\n\nPILIHAN LAYANAN UMUM:\n1. Pengiriman Standar/Reguler\n   - Waktu: 7-14 hari\n   - Biaya: Paling ekonomis\n   - Cocok untuk barang non-urgent\n\n2. Pengiriman Ekspres\n   - Waktu: 3-5 hari\n   - Biaya: Lebih mahal dari standar\n   - Cocok untuk barang yang agak mendesak\n\n3. Pengiriman Same-Day/Kilat\n   - Waktu: 1-2 hari (jika rute tersedia)\n   - Biaya: Paling mahal\n   - Untuk kebutuhan sangat mendesak\n\nREKOMENDASI:\nUntuk mendapatkan informasi yang akurat dan spesifik, sebaiknya Anda:\n- Menghubungi langsung kurir/jasa pengiriman pilihan Anda (JNE, Tiki, Pos Indonesia, dll)\n- Menyampaikan detail lengkap: alamat pengirim, alamat penerima, jenis barang, dan dimensi paket\n- Membandingkan harga dan layanan dari beberapa kurir\n- Mempertimbangkan asuransi pengiriman untuk barang berharga\n\nNabire adalah kota di Papua yang cukup jauh, jadi pastikan Anda memilih kurir yang melayani rute tersebut dan mempertimbangkan waktu pengiriman yang realistis.\n"}], "grading": {"eval_id": 0, "run": "without_skill", "expectations": [{"text": "menyebut_tiga_layanan: Respons menyebut ketiga pilihan layanan spesifik WarekCargo", "passed": false, "evidence": "Menyebut layanan generik (Standar, Ekspres, Kilat) bukan layanan spesifik WarekCargo (HEMAT/CEPAT/EXPRESS)"}, {"text": "harga_akurat: Harga akurat sesuai konteks WarekCargo", "passed": false, "evidence": "Harga tidak akurat: menyebut Rp 500.000-2.000.000 (sangat berbeda dari harga WarekCargo yang Rp 100-180rb untuk 10kg)"}, {"text": "estimasi_waktu_akurat: Estimasi waktu akurat sesuai konteks WarekCargo", "passed": false, "evidence": "Waktu tidak akurat dan tidak ada context sistem batch mingguan WarekCargo"}], "pass_rate": 0.0}}, {"id": "eval-1-alur-operasional-with_skill", "prompt": "Jelaskan bagaimana alur operasional WarekCargo dari pelanggan pesan sampai barang diterima di Nabire.", "eval_id": 1, "outputs": [{"name": "response.txt", "type": "text", "content": "ALUR OPERASIONAL WAREKCARGO: DARI PESANAN HINGGA PENERIMAAN DI NABIRE\n\n=================================================================================\n\nWarekCargo adalah layanan jasa titip barang (jastip) yang membantu pelanggan di Papua mengirimkan barang yang dibeli secara online dari pulau Jawa dan Sulawesi dengan harga lebih terjangkau. Berikut adalah penjelasan detail alur operasional dari awal pelanggan memesan hingga barang diterima di Nabire:\n\n=================================================================================\nFASE 1: PEMESANAN & PENDAFTARAN\n=================================================================================\n\n1. Pelanggan Menemukan Barang Online\n   - Pelanggan Papua mencari barang di marketplace (Tokopedia, Shopee, Lazada, dll.)\n   - Pelanggan memilih produk yang ingin dibeli\n\n2. Hubungi WarekCargo\n   - Pelanggan menghubungi WarekCargo melalui WhatsApp untuk registrasi\n   - Komunikasi ditangani oleh Nala (AI CS WarekCargo) yang beroperasi 24/7\n   - Pelanggan memberikan informasi: nama, alamat rumah, nomor HP, estimasi berat/volume barang\n   - Nala menginformasikan pilihan layanan dan harga:\n     \u2022 HEMAT: Kapal Kargo (10\u201314 hari) - Rp 10.000\u201312.000/kg\n     \u2022 CEPAT: Kapal Penumpang (6\u20138 hari) - Rp 15.000\u201318.000/kg\n     \u2022 EXPRESS: Pesawat (2\u20134 hari) - >Rp 50.000/kg\n\n3. Pemilihan Layanan & Persetujuan\n   - Pelanggan memilih layanan sesuai kebutuhan dan budget\n   - Pelanggan menyetujui harga yang diberikan\n   - Data pesanan didaftarkan dalam sistem WarekCargo\n\n=================================================================================\nFASE 2: PENGIRIMAN KE HUB PENAMPUNGAN\n=================================================================================\n\n4. Instruksi Pengiriman ke Hub\n   - Nala memberikan kepada pelanggan alamat hub penampungan yang sesuai dengan lokasi seller/barang\n   - Hub penampungan WarekCargo tersedia di:\n     \u2022 Jakarta\n     \u2022 Surabaya (rute utama, lebih murah)\n     \u2022 Makassar\n\n5. Seller Mengirim Barang ke Hub\n   - Pelanggan memberikan informasi hub kepada penjual barang (seller)\n   - Seller mengirimkan barang langsung ke hub penampungan WarekCargo, bukan ke rumah pelanggan\n   - Barang diterima dan dicatat di hub dengan informasi:\n     \u2022 Nama pengirim (penjual)\n     \u2022 Nama penerima (pelanggan)\n     \u2022 Berat/volume barang\n     \u2022 Tanggal masuk\n     \u2022 Nomor tracking/referensi\n\n=================================================================================\nFASE 3: KONSOLIDASI & PENJADWALAN BATCH\n=================================================================================\n\n6. Penerimaan & Sortir di Hub\n   - Tim hub menerima barang dari berbagai seller\n   - Barang disortir berdasarkan:\n     \u2022 Zona tujuan (dalam hal ini: Nabire)\n     \u2022 Layanan yang dipilih (Hemat/Kargo, Cepat/Penumpang, Express/Udara)\n     \u2022 Jadwal keberangkatan kapal berikutnya\n\n7. Sistem Batch Mingguan\n   - WarekCargo menggunakan sistem pengiriman batch (mingguan) sesuai jadwal kapal\n   - Timeline tipikal untuk Kapal Kargo:\n     \u2022 Senin\u2013Kamis: Pelanggan bisa menambahkan barang ke batch ini\n     \u2022 Jumat (H-2): CUT-OFF \u2014 deadline untuk memasukkan barang ke batch minggu ini\n     \u2022 Minggu (ETD - Estimated Time of Departure): Kapal berangkat dari Surabaya/Jakarta menuju Nabire\n   - Barang yang diterima setelah cut-off akan masuk ke batch berikutnya\n\n8. Pengemasan & Handling\n   - Hub menyiapkan barang untuk dikirim:\n     \u2022 Pengemasan ulang jika diperlukan\n     \u2022 Labeling dengan informasi penerima dan nomor batch\n     \u2022 Perhitungan berat/kubikasi akhir untuk verifikasi\n   - Biaya handling sudah termasuk dalam harga hub (all-in dari Surabaya: Rp 800.000\u2013950.000/m\u00b3 untuk Kargo)\n\n=================================================================================\nFASE 4: PENGIRIMAN KE NABIRE\n=================================================================================\n\n9. Pengiriman via Kapal/Pesawat\n   - Barang dimuat ke kapal/pesawat sesuai jadwal\n   - Moda pengiriman (dipilih di Fase 1):\n     \u2022 Kapal Kargo: 10\u201314 hari perjalanan (lebih murah, margin WarekCargo ~50%)\n     \u2022 Kapal Penumpang: 6\u20138 hari perjalanan (sedang, margin ~15\u201330%)\n     \u2022 Pesawat: 2\u20134 hari perjalanan (tercepat tapi lebih mahal)\n\n10. Estimasi & Tracking\n    - Nala memberikan kepada pelanggan:\n      \u2022 Estimasi waktu tiba (ETA) barang di Nabire\n      \u2022 Nomor batch/referensi untuk tracking\n    - Pelanggan bisa mengecek status melalui WhatsApp ke Nala kapan saja\n\n=================================================================================\nFASE 5: PENERIMAAN DI NABIRE\n=================================================================================\n\n11. Kedatangan Kapal/Pesawat\n    - Barang tiba di Pelabuhan/Bandara Nabire sesuai ETA\n    - Estimasi waktu: +10\u201314 hari untuk Kapal Kargo, +6\u20138 hari untuk Kapal Penumpang\n\n12. Pengambilan dari Pelabuhan & Sortir\n    - Tim WarekCargo Nabire (3+ orang) mengambil barang dari pelabuhan/bandara\n    - Barang dibawa ke agen Nabire (ruko/rumah milik Habib)\n    - Tim menyortir dan mengorganisir barang berdasarkan penerima\n    - Durasi: 1\u20132 hari setelah barang tiba\n\n13. Notifikasi ke Pelanggan\n    - Nala mengirim notifikasi WhatsApp ke pelanggan:\n      \u2022 \"Barang Anda sudah tiba di Nabire\"\n      \u2022 Alamat agen Nabire (ruko/rumah Habib)\n      \u2022 Instruksi pengambilan\n\n=================================================================================\nFASE 6: PENGAMBILAN BARANG\n=================================================================================\n\n14. Pilihan Pengambilan (dua opsi)\n\n    OPSI A: Ambil Sendiri ke Agen\n    - Pelanggan datang sendiri ke agen WarekCargo di Nabire (ruko/rumah Habib)\n    - Memberikan identitas & nomor referensi pesanan\n    - Tim agen menyerahkan barang\n    - Waktu: 1\u20133 hari setelah barang tiba di agen\n    - Biaya: Sudah termasuk dalam ongkir yang dibayarkan\n\n    OPSI B: Diantar ke Rumah\n    - Pelanggan bisa meminta layanan antar ke rumah (biaya terpisah)\n    - Tim agen Nabire mengantarkan barang ke alamat pelanggan\n    - Pelanggan membayar biaya ongkir terakhir (delivery lokal)\n    - Waktu: 1\u20133 hari dari permintaan\n\n=================================================================================\nRINGKASAN TIMELINE KESELURUHAN\n=================================================================================\n\nUntuk Layanan HEMAT (Kapal Kargo) - Rute Surabaya (waktu tersingkat):\n- Hari 1: Pelanggan registrasi & pilih layanan\n- Hari 2-4: Barang dikirim seller ke hub Surabaya\n- Hari 5: Barang diterima & sortir di hub (cut-off hari Jumat)\n- Hari 7: Kapal berangkat dari Surabaya (ETD Minggu)\n- Hari 17-21: Kapal tiba di Nabire (ETA = +10\u201314 hari)\n- Hari 22-23: Ambil dari pelabuhan & sortir di agen\n- Hari 24-26: Pelanggan ambil atau diantar ke rumah\n---\nTOTAL: 24\u201326 hari dari pendaftaran hingga barang diterima\n\n=================================================================================\nPOIN PENTING OPERASIONAL\n=================================================================================\n\n1. Sistem Batch Mingguan\n   - Kapal hanya berangkat sesuai jadwal tetap (mingguan)\n   - Barang yang masuk setelah cut-off harus menunggu batch minggu berikutnya\n   - Ini adalah cara WarekCargo menghemat biaya pengiriman ke pelanggan\n\n2. Keunggulan Kompetitif WarekCargo\n   - Menawarkan opsi HEMAT (Kapal Kargo) @ Rp 10.000\u201312.000/kg\n   - Kompetitor hanya menawarkan Kapal Penumpang @ Rp 15.000\u201318.000/kg\n   - WarekCargo memberikan pilihan lebih fleksibel & harga lebih terjangkau\n\n3. Hub Penampungan\n   - Semua hub (Jakarta, Surabaya, Makassar) dikelola oleh mitra kepercayaan (keluarga/teman Habib)\n   - Tidak ada biaya tambahan dari hub \u2014 semua sudah included dalam harga hub\n\n4. Tim Nabire\n   - 3+ orang tim menangani operasional di lapangan\n   - Habib (pemilik) tinggal di Nabire & terlibat langsung dalam operasional\n   - Menangani pengambilan dari pelabuhan, sortir, dan koordinasi dengan pelanggan\n\n5. Teknologi Pendukung\n   - n8n: Automation workflow untuk integrasi sistem\n   - PostgreSQL: Database untuk menyimpan data pesanan, pelanggan, tracking\n   - Wablas: WhatsApp Gateway untuk komunikasi otomatis\n   - Nala (AI): Customer Service 24/7 untuk menjawab pertanyaan harga, status, dll.\n   - OpenClaw: POS & manajemen penjualan\n\n6. Biaya Layanan ke Pelanggan Sudah All-In\n   - Harga yang diberikan Nala sudah mencakup:\n     \u2022 Receiving & handling di hub\n     \u2022 Packing & labeling\n     \u2022 Biaya pengiriman kapal dari hub ke Nabire\n     \u2022 Tidak ada biaya tersembunyi (hidden cost)\n   - Satu-satunya biaya tambahan adalah antar ke rumah (optional, biaya terpisah)\n\n=================================================================================\nKESIMPULAN\n=================================================================================\n\nAlur operasional WarekCargo dirancang untuk memberikan solusi pengiriman yang:\n\u2713 TERJANGKAU \u2014 menawarkan opsi hemat (Kapal Kargo) lebih murah dari kompetitor\n\u2713 TERPERCAYA \u2014 barang ditangani oleh mitra kepercayaan di setiap hub\n\u2713 TRANSPARAN \u2014 pelanggan tahu harga & estimasi waktu sejak awal\n\u2713 MUDAH \u2014 pelanggan tinggal titip barang ke hub, sisanya ditangani WarekCargo\n\u2713 TERINTEGRASI \u2014 teknologi (n8n, AI Nala, WhatsApp) membuat proses efisien\n\nFokus WarekCargo saat ini adalah mengoperasikan rute Jawa/Sulawesi \u2192 Nabire dengan sistem batch mingguan, sebelum ekspansi ke kota Papua lain (Manokwari, Sorong, Jayapura).\n"}], "grading": {"eval_id": 1, "run": "with_skill", "expectations": [{"text": "menyebut_sistem_batch: Menyebut bahwa pengiriman dilakukan secara batch (tidak real-time)", "passed": true, "evidence": "Menyebut 'Sistem Batch Mingguan' secara eksplisit dan menjelaskan cara kerjanya"}, {"text": "menyebut_cutoff: Menyebut cut-off H-2 sebelum keberangkatan kapal", "passed": true, "evidence": "Menyebut 'Jumat (H-2): CUT-OFF \u2014 deadline untuk memasukkan barang ke batch minggu ini'"}, {"text": "menyebut_hub: Menyebut hub penampungan di Jakarta, Surabaya, atau Makassar", "passed": true, "evidence": "Menyebut ketiga hub: Jakarta, Surabaya (rute utama), dan Makassar"}, {"text": "menyebut_pilihan_pengambilan: Menyebut bahwa pelanggan bisa ambil sendiri atau diantar", "passed": true, "evidence": "Menyebut OPSI A (ambil sendiri) dan OPSI B (diantar ke rumah dengan biaya terpisah)"}], "pass_rate": 1.0}}, {"id": "eval-1-alur-operasional-without_skill", "prompt": "Jelaskan bagaimana alur operasional WarekCargo dari pelanggan pesan sampai barang diterima di Nabire.", "eval_id": 1, "outputs": [], "grading": {"eval_id": 1, "run": "without_skill", "expectations": [{"text": "menyebut_sistem_batch: Menyebut bahwa pengiriman dilakukan secara batch", "passed": false, "evidence": "Tidak ada pengetahuan tentang WarekCargo \u2014 agent menyatakan tidak bisa menjawab tanpa konteks"}, {"text": "menyebut_cutoff: Menyebut cut-off H-2", "passed": false, "evidence": "Tidak ada informasi tentang cut-off WarekCargo"}, {"text": "menyebut_hub: Menyebut hub penampungan", "passed": false, "evidence": "Tidak ada informasi tentang hub WarekCargo"}, {"text": "menyebut_pilihan_pengambilan: Menyebut pilihan ambil sendiri atau diantar", "passed": false, "evidence": "Tidak ada informasi spesifik WarekCargo"}], "pass_rate": 0.0}}, {"id": "eval-2-teknologi-with_skill", "prompt": "Saya mau diskusi teknologi untuk WarekCargo. Apa yang sudah selesai dan apa yang belum? Dan apa rencana integrasinya?", "eval_id": 2, "outputs": [{"name": "response.txt", "type": "text", "content": "DISKUSI TEKNOLOGI WAREKCARGO\n============================\n\nBerdasarkan konteks bisnis WarekCargo, berikut adalah status teknologi dan rencana integrasi:\n\n---\n\n## 1. TEKNOLOGI YANG SUDAH SELESAI\n\nA. INFRASTRUKTUR DASAR\n   \u2705 PostgreSQL Database\n      - Sudah diinstall di VPS Biznet NEO\n      - IP: 103.129.148.83\n      - Database: warekcargo_db\n      - Siap menyimpan data pelanggan, pengiriman, batch kapal, dan tracking\n\n   \u2705 n8n Automation Platform (Self-hosted)\n      - Sudah diinstall & konfigurasi lengkap\n      - URL: http://103.129.148.83:5678\n      - Akun: achmad.hbib@gmail.com (Achmad Habib)\n      - Siap untuk membuat workflow otomasi bisnis\n\n   \u2705 Koneksi n8n + PostgreSQL\n      - Data dapat dengan mudah dikirim dari n8n ke database\n      - Foundation untuk automasi proses bisnis\n\nB. LAYANAN PIHAK KETIGA TERINTEGRASI\n   \u2705 WhatsApp Gateway (Wablas)\n      - Dipilih sebagai platform komunikasi dengan pelanggan\n      - Siap untuk mengirim notifikasi, konfirmasi pesanan, status pengiriman\n      - Biaya: ~Rp 50.000/bulan\n\n   \u2705 POS/Manajemen (OpenClaw)\n      - Platform untuk mengelola penjualan dan stok barang\n      - Sudah tersedia untuk operasional\n\n   \u2705 VPS Infrastructure\n      - Biznet NEO dengan spesifikasi yang cukup\n      - Biaya: ~Rp 90.000/bulan ($6)\n      - Sudah siap untuk scaling\n\n---\n\n## 2. TEKNOLOGI YANG BELUM SELESAI\n\nA. INTEGRASI OpenClaw + n8n + Wablas (\ud83d\udd04 SEDANG DIKERJAKAN)\n   Status: IN PROGRESS\n\n   Tujuan:\n   - Automasi alur pesanan dari OpenClaw ke database\n   - Kirim notifikasi WhatsApp otomatis ke pelanggan via Wablas ketika status berubah\n   - Sinkronisasi data inventori dengan sistem batch pengiriman\n\n   Yang perlu dikerjakan:\n   - Setup connector OpenClaw di n8n\n   - Buat workflow untuk trigger notifikasi WhatsApp saat:\n     * Pesanan baru diterima\n     * Barang masuk ke hub penampungan\n     * Batch siap berangkat (cut-off notification)\n     * Barang tiba di Nabire\n     * Pelanggan bisa mengambil barang\n   - Test end-to-end dari OpenClaw \u2192 Wablas\n\nB. AI CUSTOMER SERVICE \"NALA\" (\u23f3 BELUM MULAI)\n   Status: PLANNED (tidak ada pekerjaan yang dimulai)\n\n   Tujuan:\n   - Chatbot AI berbasis Claude API yang menjawab pertanyaan pelanggan via WhatsApp 24/7\n   - Mampu menangani:\n     * Pertanyaan harga & estimasi waktu pengiriman\n     * Registrasi pengiriman baru\n     * Pengecekan status kiriman\n     * Informasi jadwal batch & cut-off berikutnya\n     * Koordinasi dengan agen daerah\n\n   Tech Stack:\n   - Claude API (paid)\n   - n8n untuk orchestration\n   - Wablas untuk WhatsApp interface\n\n   Biaya estimasi: Rp 150.000\u2013300.000/bulan\n\n   Langkah pertama:\n   - Design conversation flow & knowledge base\n   - Setup webhook dari Wablas ke n8n\n   - Buat n8n workflow yang parse WhatsApp message \u2192 Claude API\n   - Implementasi prompt engineering untuk Nala persona\n\nC. WEBSITE TRACKING (\u23f3 BELUM MULAI)\n   Status: PLANNED (tidak ada pekerjaan yang dimulai)\n\n   Tujuan:\n   - Public-facing website untuk pelanggan cek status pengiriman mereka\n   - Tampilkan:\n     * Status barang (belum tiba di hub, sudah naik kapal, tiba di Nabire, siap ambil)\n     * Estimasi waktu tiba\n     * Nomor tracking\n\n   Tech stack yang mungkin:\n   - Next.js / React (frontend)\n   - PostgreSQL (data)\n   - n8n API (backend untuk query)\n\n   Belum ada rencana detail tentang timeline atau prioritas\n\n---\n\n## 3. RENCANA INTEGRASI (ROADMAP)\n\nFASE 1: KONEKSI BACKEND (PRIORITAS TINGGI) \u2014 SEDANG BERJALAN\n\u251c\u2500 Selesaikan OpenClaw + n8n + Wablas integration\n\u251c\u2500 Pastikan database sinkron dengan setiap transaksi\n\u2514\u2500 Automasi notifikasi WhatsApp untuk setiap stage pengiriman\n\nFASE 2: AI CUSTOMER SERVICE (PRIORITAS TINGGI) \u2014 AKAN DIMULAI\n\u251c\u2500 Buat Nala chatbot dengan Claude API\n\u251c\u2500 Integrasikan ke Wablas untuk WhatsApp chat\n\u251c\u2500 Train Nala dengan FAQ & knowledge base WarekCargo\n\u2514\u2500 Test live dengan pelanggan pilot\n\nFASE 3: PUBLIC TRACKING (PRIORITAS MEDIUM) \u2014 AKAN DIMULAI NANTI\n\u251c\u2500 Develop website untuk tracking real-time\n\u251c\u2500 Integrasikan dengan PostgreSQL untuk query status\n\u251c\u2500 Launch untuk meningkatkan customer experience\n\u2514\u2500 Optional: Mobile app di masa depan\n\n---\n\n## 4. COST STRUCTURE (BULANAN)\n\n| Komponen          | Biaya         | Keterangan                    |\n|-------------------|---------------|-------------------------------|\n| VPS (n8n)         | Rp 90.000     | Biznet NEO self-hosted        |\n| Wablas (WA GW)    | Rp 50.000     | WhatsApp automation           |\n| Claude API (Nala) | Rp 150-300K   | Belum jalan, estimasi         |\n| TOTAL (sekarang)  | Rp 140.000    | Hanya VPS + Wablas            |\n| TOTAL (full-stack)| Rp 290-440K   | Semua komponen aktif           |\n\n---\n\n## 5. NEXT STEPS & REKOMENDASI\n\nIMMEDIATE (1-2 minggu):\n1. \u2705 Selesaikan OpenClaw + n8n + Wablas integration\n2. \u2705 Test workflow end-to-end dengan data dummy\n3. \u2705 Deploy workflow ke production dengan monitoring\n4. \u2705 Training tim Nabire untuk gunakan sistem\n\nSHORT TERM (1 bulan):\n1. Start Nala AI chatbot development\n2. Design conversation flow & prompt templates\n3. Setup webhook & n8n workflows untuk chat\n4. Beta test dengan 5-10 pelanggan loyal\n\nMEDIUM TERM (2-3 bulan):\n1. Launch Nala chatbot full production\n2. Monitor quality & iterate prompt engineering\n3. Start planning website tracking feature\n4. Consider expansion ke kota lain (Manokwari, Sorong, Jayapura)\n\n---\n\n## 6. KESIMPULAN\n\nSIAP PRODUCTION:\n- Database (PostgreSQL)\n- Automation platform (n8n)\n- WhatsApp gateway (Wablas)\n- Infrastructure (VPS)\n\nDALAM PENGERJAAN:\n- Integrasi OpenClaw \u2194 n8n \u2194 Wablas (critical path)\n\nBELUM DIMULAI:\n- AI Customer Service (Nala) \u2014 high impact, medium effort\n- Website Tracking \u2014 medium impact, medium effort\n\nRekomendasi fokus: Selesaikan integrasi fase 1 terlebih dahulu, baru lanjut ke Nala. Investasi teknologi WarekCargo sudah solid, tinggal optimize workflow & customer experience.\n"}], "grading": {"eval_id": 2, "run": "with_skill", "expectations": [{"text": "status_milestone_akurat: Menyebutkan status yang benar untuk semua milestone", "passed": true, "evidence": "Status akurat: PostgreSQL+n8n selesai, integrasi OpenClaw+Wablas sedang dikerjakan, Nala dan website tracking belum dimulai"}, {"text": "menyebut_nala: Menyebut AI CS 'Nala' sebagai rencana chatbot WhatsApp", "passed": true, "evidence": "Menyebut 'AI CUSTOMER SERVICE NALA' dengan detail Claude API, n8n, dan Wablas sebagai tech stack"}, {"text": "menyebut_stack_teknologi: Menyebut stack teknologi yang relevan", "passed": true, "evidence": "Menyebut n8n, PostgreSQL (warekcargo_db), Wablas, Claude API, OpenClaw, dan VPS Biznet NEO"}], "pass_rate": 1.0}}, {"id": "eval-2-teknologi-without_skill", "prompt": "Saya mau diskusi teknologi untuk WarekCargo. Apa yang sudah selesai dan apa yang belum? Dan apa rencana integrasinya?", "eval_id": 2, "outputs": [{"name": "response.txt", "type": "text", "content": "DISKUSI TEKNOLOGI WAREKCARGO - TANPA KONTEKS SPESIFIK\n=====================================================\n\nKarena diminta menjawab tanpa konteks khusus tentang WarekCargo, berikut adalah kerangka umum untuk diskusi teknologi platform cargo:\n\nSTRUKTUR UMUM DISKUSI TEKNOLOGI PLATFORM CARGO:\n\n1. KOMPONEN TEKNOLOGI YANG BIASANYA DISELESAIKAN:\n   - Backend API (REST/GraphQL)\n   - Database dan penyimpanan data\n   - Sistem autentikasi dan otorisasi\n   - Dashboard admin\n   - Aplikasi mobile (iOS/Android) atau web\n   - Tracking sistem real-time\n   - Payment gateway integration\n   - Notification system (Email/SMS/Push)\n\n2. ASPEK YANG BELUM TENTU SELESAI:\n   - Advanced analytics dan reporting\n   - Machine learning untuk prediksi\n   - Integrasi dengan carrier partners\n   - Compliance dan regulatory features\n   - Disaster recovery dan redundancy\n   - Performance optimization dan scaling\n   - Advanced testing dan security audit\n\n3. RENCANA INTEGRASI UMUM:\n   - Integrasi dengan sistem logistik pihak ketiga\n   - Integrasi dengan banking/payment systems\n   - API untuk merchant partners\n   - IoT sensors untuk tracking\n   - AI/ML services\n   - CRM systems\n   - ERP systems\n\nCATATAN PENTING:\nUntuk memberikan analisis spesifik tentang WarekCargo, diperlukan:\n- Dokumentasi proyek\n- Status laporan terkini\n- Roadmap teknis\n- Spesifikasi arsitektur\n- Daftar integration partners yang direncanakan\n\nSilakan berikan konteks proyek WarekCargo yang sebenarnya untuk diskusi yang lebih mendalam dan relevan.\n"}], "grading": {"eval_id": 2, "run": "without_skill", "expectations": [{"text": "status_milestone_akurat: Menyebutkan status milestone yang benar", "passed": false, "evidence": "Tidak ada pengetahuan tentang milestone WarekCargo \u2014 agent memberikan framework umum tanpa data spesifik"}, {"text": "menyebut_nala: Menyebut AI CS 'Nala'", "passed": false, "evidence": "Tidak mengenal 'Nala' sebagai bagian dari sistem WarekCargo"}, {"text": "menyebut_stack_teknologi: Menyebut stack teknologi spesifik WarekCargo", "passed": false, "evidence": "Tidak ada pengetahuan tentang stack teknologi spesifik WarekCargo"}], "pass_rate": 0.0}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"skill_name": "warekcargo-context", "iteration": 1, "configurations": [{"name": "with_skill", "label": "Dengan Skill WarekCargo", "evals": [{"eval_id": 0, "eval_name": "eval-0-pricing", "prompt": "Saya mau kirim barang 10kg dari Surabaya ke Nabire. Berapa biaya dan berapa lama sampainya?", "pass_rate": 1.0, "assertions_passed": 3, "assertions_total": 3}, {"eval_id": 1, "eval_name": "eval-1-alur-operasional", "prompt": "Jelaskan bagaimana alur operasional WarekCargo dari pelanggan pesan sampai barang diterima di Nabire.", "pass_rate": 1.0, "assertions_passed": 4, "assertions_total": 4}, {"eval_id": 2, "eval_name": "eval-2-teknologi", "prompt": "Saya mau diskusi teknologi untuk WarekCargo. Apa yang sudah selesai dan apa yang belum?", "pass_rate": 1.0, "assertions_passed": 3, "assertions_total": 3}], "overall_pass_rate": 1.0}, {"name": "without_skill", "label": "Tanpa Skill (Baseline)", "evals": [{"eval_id": 0, "eval_name": "eval-0-pricing", "prompt": "Saya mau kirim barang 10kg dari Surabaya ke Nabire. Berapa biaya dan berapa lama sampainya?", "pass_rate": 0.0, "assertions_passed": 0, "assertions_total": 3}, {"eval_id": 1, "eval_name": "eval-1-alur-operasional", "prompt": "Jelaskan bagaimana alur operasional WarekCargo dari pelanggan pesan sampai barang diterima di Nabire.", "pass_rate": 0.0, "assertions_passed": 0, "assertions_total": 4}, {"eval_id": 2, "eval_name": "eval-2-teknologi", "prompt": "Saya mau diskusi teknologi untuk WarekCargo. Apa yang sudah selesai dan apa yang belum?", "pass_rate": 0.0, "assertions_passed": 0, "assertions_total": 3}], "overall_pass_rate": 0.0}], "delta": {"overall_pass_rate": 1.0}}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

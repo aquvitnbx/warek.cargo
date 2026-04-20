@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-20T11:23:37.531Z",
+  "entries": {
+    "memory:memory/2026-04-17.md:1:6": {
+      "key": "memory:memory/2026-04-17.md:1:6",
+      "path": "memory/2026-04-17.md",
+      "startLine": 1,
+      "endLine": 6,
+      "source": "memory",
+      "snippet": "- WarekCargo context established in detail with Habib. - Nala should treat WarekCargo as a jastip and batch logistics business for Papua, centered on Nabire with hubs in Jakarta, Surabaya, and Makassar. - Admin hub SOP should stay simple: when goods arrive, admin checks non-COD, takes package and label photos, then sends Nala a compact chat template containing customer name, seller tracking number, hub, package status, optional note, and attached photo. - Habib does not want a separate internal \"ID pengiriman\" field for hub admin input when it duplicates seller tracking number. - Nala should remember and be able to explain this SOP and admin chat template back to hub admins in future WarekCa",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6325656739902046,
+      "maxScore": 0.6325656739902046,
+      "firstRecalledAt": "2026-04-17T13:51:22.370Z",
+      "lastRecalledAt": "2026-04-17T13:51:22.370Z",
+      "queryHashes": [
+        "cbcdac590828"
+      ],
+      "recallDays": [
+        "2026-04-17"
+      ],
+      "conceptTags": [
+        "non-cod",
+        "warekcargo",
+        "context",
+        "established",
+        "detail",
+        "habib",
+        "nala",
+        "treat"
+      ]
+    },
+    "memory:memory/2026-04-18.md:1:6": {
+      "key": "memory:memory/2026-04-18.md:1:6",
+      "path": "memory/2026-04-18.md",
+      "startLine": 1,
+      "endLine": 6,
+      "source": "memory",
+      "snippet": "- Established WarekCargo as a core long-term workstream. Business model: jasa titip and consolidated shipping from Jakarta/Surabaya/Makassar hubs to Papua, especially Nabire, with Nala intended as the CS/operations brain for WhatsApp Business. - Captured key operating rules: customer must confirm before sending to hub, no COD accepted, one seller tracking number should map to one package ticket from start to finish, shipment can be split across batches with customer approval, and final shipping fee is determined after repacking/final measurement. - Built multiple WarekCargo architecture artifacts in workspace: WAREKCARGO_ERP_BLUEPRINT.md, WAREKCARGO_BASE_SYSTEM_CHANGES.md, WAREKCARGO_MASTER_",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.9408034015950011,
+      "maxScore": 0.9408034015950011,
+      "firstRecalledAt": "2026-04-20T11:23:37.531Z",
+      "lastRecalledAt": "2026-04-20T11:23:37.531Z",
+      "queryHashes": [
+        "7f1dab41d7cd"
+      ],
+      "recallDays": [
+        "2026-04-20"
+      ],
+      "conceptTags": [
+        "long-term",
+        "jakarta/surabaya/makassar",
+        "cs/operations",
+        "repacking/final",
+        "warekcargo-erp-blueprint.md",
+        "warekcargo-master",
+        "established",
+        "warekcargo"
+      ]
+    }
+  }
+}
