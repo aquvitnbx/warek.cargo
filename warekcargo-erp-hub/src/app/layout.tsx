@@ -43,6 +43,9 @@ export default function RootLayout({
             <Link href="/customers" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">👥</span> Pelanggan
             </Link>
+            <Link href="/consolidation" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors border border-blue-800 border-dashed text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">📦</span> Konsolidasi
+            </Link>
           </nav>
         </aside>
 
@@ -75,8 +78,11 @@ export default function RootLayout({
           <Link href="/batches" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12">
             <span className="text-2xl mb-1">🚢</span> Kapal
           </Link>
-          <Link href="/customers" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12 text-center">
+          <Link href="/customers" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12 text-center text-[9px]">
             <span className="text-2xl mb-1">👥</span> Cli
+          </Link>
+          <Link href="/consolidation" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12 text-center text-[9px]">
+            <span className="text-2xl mb-1">📦</span> Pack
           </Link>
         </nav>
       </body>
