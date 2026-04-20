@@ -74,7 +74,7 @@ export default function TrackingInputWithScanner() {
 
            <div className="pt-8 pb-8 px-6 flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center text-4xl">📸</div>
-              <p className="text-white text-xs font-medium">Fungsi Live Camera sengaja dimatikan sementara untuk debugging.</p>
+              <p className="text-white text-xs font-medium">Arahkan kamera ke barcode/resi.</p>
               
               <button 
                 type="button" 
