@@ -20,7 +20,7 @@ export async function submitBatch(formData: FormData) {
 
     const insertQuery = `
       INSERT INTO shipping_batches (batch_code, service_type_code, transport_mode_code, closing_at, etd_at, batch_status_code, hub_id, created_at, updated_at)
-      VALUES ($1, 'REGULAR', $2, $3, $3, 'PLANNED', $4, NOW(), NOW())
+      VALUES ($1, 'HEMAT', $2, $3, $3, 'PLANNED', $4, NOW(), NOW())
     `;
     
     await pool.query(insertQuery, [batchCode, transportModeCode, closingAt, hubId]);

@@ -4,6 +4,8 @@ export const revalidate = 0;
 
 export default async function PackagesList() {
   let packages = [];
+  let dbError: string | null = null;
+  
   try {
      const res = await pool.query(`
         SELECT p.tracking_number, p.received_at, p.package_status_code, h.code as hub_code, p.item_description
@@ -13,8 +15,8 @@ export default async function PackagesList() {
         LIMIT 50
      `);
      packages = res.rows;
-  } catch (err) {
-     console.error("Packages fetch err:", err);
+  } catch (err: any) {
+     dbError = err.message || "Gagal terkoneksi ke Sistem Pangkalan Database.";
   }
 
   return (
@@ -27,6 +29,18 @@ export default async function PackagesList() {
             <p className="text-slate-500 mt-2 text-sm font-medium">Melacak 50 masuk dan pergerakan logistik terakhir di pangkalan Hub Utama.</p>
          </div>
        </div>
+
+       {dbError && (
+         <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-center justify-between text-red-700 shadow-sm animate-pulse">
+            <div className="flex items-center gap-4">
+               <span className="text-3xl">📡</span>
+               <div>
+                 <h4 className="font-bold tracking-tight">Koneksi Pangkalan Terputus</h4>
+                 <p className="text-sm font-medium mt-1">Kode: {dbError}</p>
+               </div>
+            </div>
+         </div>
+       )}
 
        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">

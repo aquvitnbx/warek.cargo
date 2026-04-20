@@ -5,11 +5,13 @@ export const revalidate = 0;
 
 export default async function BatchesPage() {
    let batches = [];
+   let dbError: string | null = null;
+   
    try {
      const res = await pool.query(`SELECT id, batch_code as batch_number, service_type_code, transport_mode_code as transport_mode, batch_status_code as status, closing_at, created_at FROM shipping_batches ORDER BY created_at DESC LIMIT 20`);
      batches = res.rows;
-   } catch(e) {
-     console.error("Fetch batches err: ", e);
+   } catch(e: any) {
+     dbError = e.message || "Gagal terkoneksi ke Sistem Pangkalan Database.";
    }
 
    return (
@@ -20,6 +22,18 @@ export default async function BatchesPage() {
           </h2>
           <p className="text-slate-500 mt-2 text-sm font-medium">Pusat pengendali navigasi (*Voyage*) penjadwalan ekspedisi rute Nabire.</p>
       </div>
+
+      {dbError && (
+         <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-center justify-between text-red-700 shadow-sm animate-pulse">
+            <div className="flex items-center gap-4">
+               <span className="text-3xl">📡</span>
+               <div>
+                 <h4 className="font-bold tracking-tight">Koneksi Pangkalan Terputus</h4>
+                 <p className="text-sm font-medium mt-1">Kode: {dbError}</p>
+               </div>
+            </div>
+         </div>
+      )}
 
       {/* CREATE FORM CARD */}
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
@@ -35,9 +49,9 @@ export default async function BatchesPage() {
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Klasifikasi Muatan</label>
               <select name="transport_mode" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer">
-                <option value="CARGO_SHIP">Truk / Kapal Kargo Roro</option>
-                <option value="PASSENGER_SHIP">Kapal Penumpang Pelni</option>
-                <option value="AIR_FREIGHT">Ekspedisi Udara Pesawat</option>
+                <option value="KAPAL_KARGO">Truk / Kapal Kargo Roro</option>
+                <option value="KAPAL_PENUMPANG">Kapal Penumpang Pelni</option>
+                <option value="PESAWAT">Ekspedisi Udara Pesawat</option>
               </select>
             </div>
             <div>
@@ -87,6 +101,17 @@ export default async function BatchesPage() {
                     </td>
                   </tr>
                 ))}
+                
+                {batches.length === 0 && (
+                  <tr>
+                     <td colSpan={4} className="p-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <span className="text-4xl opacity-50 grayscale">🌊</span>
+                          <span className="text-slate-500 font-bold tracking-widest uppercase text-xs">Belum ada jadwal kapal yang diberangkatkan.</span>
+                        </div>
+                     </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
