@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { Outfit } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 
-const font = Outfit({ subsets: ['latin'], display: 'swap' });
+const font = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'WarekCargo Hub',
@@ -16,48 +16,39 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className="dark">
-      <body className={`${font.className} min-h-screen flex flex-col md:flex-row pb-24 md:pb-0 selection:bg-cyan-500/30 selection:text-white`}>
+    <html lang="id">
+      <body className={`${font.className} min-h-screen flex flex-col md:flex-row pb-20 md:pb-0 bg-slate-50 text-slate-800`}>
         
         {/* SIDEBAR NAVIGATION (DESKTOP) */}
-        <aside className="hidden md:flex flex-col w-72 glass-panel m-4 rounded-3xl p-6 flex-shrink-0 relative overflow-hidden z-20">
-          <div className="absolute top-[-20%] right-[-20%] w-48 h-48 bg-cyan-500/20 rounded-full blur-[60px] pointer-events-none"></div>
-          <div className="text-3xl font-black mb-10 pb-6 border-b border-white/10 tracking-tight relative z-10 flex items-center gap-2">
-            <span className="text-cyan-400">⚡</span>
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400">WarekCargo</span>
+        <aside className="hidden md:flex flex-col w-72 bg-blue-900 text-white min-h-screen p-6 shadow-xl flex-shrink-0 relative overflow-hidden z-20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-[80px] opacity-50 pointer-events-none"></div>
+          
+          <div className="text-3xl font-black mb-10 pb-6 border-b border-blue-800 tracking-tight relative flex items-center gap-2">
+            WarekCargo.
           </div>
+
           <nav className="flex flex-col gap-2 relative z-10">
-            <Link href="/" className="px-5 py-4 rounded-2xl hover:bg-white/10 transition-all text-slate-300 hover:text-white hover:pl-7 group flex items-center gap-4 border border-transparent hover:border-white/5">
-              <span className="text-xl group-hover:drop-shadow-[0_0_8px_white] transition-all">🏠</span> 
-              <span className="font-semibold tracking-wide">Nexus (Home)</span>
+            <Link href="/" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">📊</span> Dasbor Utana
             </Link>
-            <Link href="/intake" className="px-5 py-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex items-center gap-4 mt-2 mb-2 group cursor-pointer">
-              <span className="text-xl group-hover:scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-transform">➕</span> 
-              <span className="font-bold tracking-wide">Portal Terima</span>
+            <Link href="/intake" className="px-5 py-4 rounded-xl bg-blue-600 border border-blue-500 hover:bg-blue-500 transition-colors shadow-sm font-bold flex items-center gap-4 my-2">
+              <span className="text-xl">➕</span> Terima Paket
             </Link>
-            <Link href="/packages" className="px-5 py-4 rounded-2xl hover:bg-white/10 transition-all text-slate-300 hover:text-white hover:pl-7 group flex items-center gap-4 border border-transparent hover:border-white/5">
-              <span className="text-xl group-hover:drop-shadow-[0_0_8px_white] transition-all">📦</span> 
-              <span className="font-semibold tracking-wide">Data Scanner</span>
+            <Link href="/packages" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">📋</span> Data Manifest
             </Link>
-            <Link href="/batches" className="px-5 py-4 rounded-2xl hover:bg-white/10 transition-all text-slate-300 hover:text-white hover:pl-7 group flex items-center gap-4 border border-transparent hover:border-white/5">
-              <span className="text-xl group-hover:drop-shadow-[0_0_8px_white] transition-all">🚢</span> 
-              <span className="font-semibold tracking-wide">Fleet Voyage</span>
+            <Link href="/batches" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">🚢</span> Jadwal Kapal
             </Link>
           </nav>
-          <div className="mt-auto pt-6 border-t border-white/5 text-xs text-slate-500 font-medium flex items-center gap-2">
-             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-             System Online
-          </div>
         </aside>
 
         {/* CONTAINER KONTEN UTAMA */}
-        <main className="flex-1 w-full overflow-y-auto relative z-10">
+        <main className="flex-1 w-full overflow-y-auto">
           {/* HEADER (MOBILE) */}
-          <header className="md:hidden glass-panel rounded-b-3xl p-5 sticky top-0 z-30 flex justify-between items-center mx-2 mt-0 border-t-0">
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400 tracking-tight flex items-center gap-2">
-               <span>⚡</span> WarekCargo
-            </h1>
-            <div className="w-9 h-9 rounded-full bg-slate-800 border border-cyan-500/50 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold">W</div>
+          <header className="md:hidden bg-blue-900 text-white p-5 sticky top-0 z-30 flex justify-between items-center shadow-md">
+            <h1 className="text-xl font-bold tracking-tight">WarekCargo Hub</h1>
+            <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center font-bold">W</div>
           </header>
           
           <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
@@ -65,21 +56,20 @@ export default function RootLayout({
           </div>
         </main>
 
-        {/* FLOATING BOTTOM NAVIGATION (MOBILE) */}
-        <nav className="md:hidden fixed bottom-4 left-4 right-4 glass-panel rounded-full flex justify-around items-center p-2 z-50 text-[10px] font-bold text-slate-400 border border-white/10 shadow-[0_15px_40px_rgba(0,0,0,0.5)]">
-          <Link href="/" className="flex flex-col items-center p-2 pt-3 hover:text-cyan-400 transition-colors w-16">
-            <span className="text-2xl mb-1">🏠</span> Home
+        {/* BOTTOM NAVIGATION (MOBILE) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-50 text-[10px] font-bold text-slate-500 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe-area">
+          <Link href="/" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-16">
+            <span className="text-2xl mb-1">📊</span> Home
           </Link>
-          <Link href="/intake" className="flex flex-col items-center p-2 relative -top-6 group">
-             <div className="absolute inset-0 bg-cyan-500 rounded-full opacity-40 filter blur-xl group-hover:opacity-80 transition-opacity"></div>
-             <div className="w-16 h-16 bg-gradient-to-tr from-cyan-600 to-cyan-400 text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.5)] border-[5px] border-slate-900 relative z-10">
-               <span className="text-2xl drop-shadow-md">➕</span>
+          <Link href="/intake" className="flex flex-col items-center p-2 relative -top-5">
+             <div className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-4 border-slate-50 outline-none">
+               <span className="text-2xl">➕</span>
              </div>
           </Link>
-          <Link href="/packages" className="flex flex-col items-center p-2 pt-3 hover:text-cyan-400 transition-colors w-16">
-            <span className="text-2xl mb-1">📦</span> Data
+          <Link href="/packages" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-16">
+            <span className="text-2xl mb-1">📋</span> Data
           </Link>
-          <Link href="/batches" className="flex flex-col items-center p-2 pt-3 hover:text-cyan-400 transition-colors w-16">
+          <Link href="/batches" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-16">
             <span className="text-2xl mb-1">🚢</span> Kapal
           </Link>
         </nav>
