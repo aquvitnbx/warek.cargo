@@ -7,6 +7,7 @@ export const revalidate = 0;
 export default async function IntakePage() {
   let hubs = [];
   let statuses = [];
+  let customers: any[] = [];
   let recentPackages = [];
   let dbError = null;
 
@@ -16,6 +17,9 @@ export default async function IntakePage() {
 
     const statusesQuery = await pool.query("SELECT code, name FROM ref_package_statuses WHERE code IN ('RECEIVED_AT_HUB', 'DAMAGED', 'UNIDENTIFIED') ORDER BY sort_order");
     statuses = statusesQuery.rows;
+
+    const customersQuery = await pool.query("SELECT id, full_name, customer_code FROM customers WHERE is_active = true ORDER BY full_name");
+    customers = customersQuery.rows;
 
     const recentQuery = await pool.query(`
       SELECT p.tracking_number, p.received_at, p.package_status_code, h.code as hub_code, p.item_description
@@ -78,7 +82,7 @@ export default async function IntakePage() {
         <div className="lg:col-span-3">
           <div className="bg-white p-7 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
             
-            <IntakeForm hubs={hubs} statuses={statuses} />
+            <IntakeForm hubs={hubs} statuses={statuses} customers={customers} />
 
           </div>
         </div>

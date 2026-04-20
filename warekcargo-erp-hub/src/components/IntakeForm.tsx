@@ -7,9 +7,10 @@ import { submitIncomingPackage } from '@/app/intake/actions';
 interface IntakeFormProps {
   hubs: { code: string; name: string }[];
   statuses: { code: string; name: string }[];
+  customers?: { id: string; full_name: string; whatsapp_number: string; customer_code?: string }[];
 }
 
-export default function IntakeForm({ hubs, statuses }: IntakeFormProps) {
+export default function IntakeForm({ hubs, statuses, customers = [] }: IntakeFormProps) {
   const [isPending, setIsPending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
@@ -112,6 +113,19 @@ export default function IntakeForm({ hubs, statuses }: IntakeFormProps) {
                ))}
              </select>
            </div>
+        </div>
+
+        {/* CUSTOMER ASSIGNMENT */}
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan Pemilik (Assign Customer)</label>
+          <select name="customer_id" className="w-full p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer">
+            <option value="">-- Assign Later / Unidentified (Kosong) --</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.full_name} {c.customer_code ? `[${c.customer_code}]` : ''} - {c.whatsapp_number}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* TRACKING NUMBER DENGAN SCANNER BLUETOOTH FOCUS */}

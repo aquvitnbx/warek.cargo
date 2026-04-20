@@ -29,6 +29,9 @@ export async function submitIncomingPackage(formData: FormData) {
   const itemDescription = formData.get('item_description') as string || null;
   const quantity = parseInt(formData.get('quantity') as string) || 1;
   const file = formData.get('file-upload') as File | null;
+  let customerId: string | null = formData.get('customer_id') as string;
+  
+  if (!customerId || customerId.trim() === '') customerId = null;
   
   if (!trackingNumber) {
     throw new Error('Resi wajib diisi');
@@ -51,8 +54,8 @@ export async function submitIncomingPackage(formData: FormData) {
     // 2. Insert tabel inbound_packages
     if (process.env.DATABASE_URL && hubId !== 'mock-hub-id') {
       const upsertQuery = `
-        INSERT INTO inbound_packages (tracking_number, hub_id, package_status_code, quantity, sender_or_store, item_description, is_cod, received_at)
-        VALUES ($1, $2, $3, $4, $5, $6, false, NOW())
+        INSERT INTO inbound_packages (tracking_number, hub_id, package_status_code, quantity, sender_or_store, item_description, customer_id, is_cod, received_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, false, NOW())
         ON CONFLICT (tracking_number) 
         DO UPDATE SET 
           package_status_code = EXCLUDED.package_status_code,
@@ -60,11 +63,12 @@ export async function submitIncomingPackage(formData: FormData) {
           quantity = EXCLUDED.quantity,
           sender_or_store = EXCLUDED.sender_or_store,
           item_description = EXCLUDED.item_description,
+          customer_id = EXCLUDED.customer_id,
           received_at = NOW(),
           updated_at = NOW()
         RETURNING id;
       `;
-      const pkgRes = await pool.query(upsertQuery, [trackingNumber, hubId, packageStatusCode, quantity, senderOrStore, itemDescription]);
+      const pkgRes = await pool.query(upsertQuery, [trackingNumber, hubId, packageStatusCode, quantity, senderOrStore, itemDescription, customerId]);
       if (pkgRes.rows.length > 0) {
          packageId = pkgRes.rows[0].id;
       }
