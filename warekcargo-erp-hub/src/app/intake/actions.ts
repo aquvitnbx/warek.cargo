@@ -31,7 +31,7 @@ export async function submitIncomingPackage(formData: FormData) {
   const file = formData.get('file-upload') as File | null;
   
   if (!trackingNumber) {
-    return { success: false, message: 'Resi wajib diisi' };
+    throw new Error('Resi wajib diisi');
   }
 
   try {
