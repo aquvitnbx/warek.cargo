@@ -6,7 +6,7 @@ export const revalidate = 0;
 export default async function BatchesPage() {
    let batches = [];
    try {
-     const res = await pool.query(`SELECT id, batch_number, service_type_code, transport_mode, status, closing_at, created_at FROM shipping_batches ORDER BY created_at DESC LIMIT 20`);
+     const res = await pool.query(`SELECT id, batch_number, service_type_code, transport_mode, batch_status_code as status, closing_at, created_at FROM shipping_batches ORDER BY created_at DESC LIMIT 20`);
      batches = res.rows;
    } catch(e) {
      console.error("Fetch batches err: ", e);

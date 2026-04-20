@@ -12,7 +12,7 @@ export default async function DashboardOwner() {
     const todayQuery = await pool.query(`SELECT COUNT(*) as count FROM inbound_packages WHERE DATE(received_at) = CURRENT_DATE`);
     totalToday = parseInt(todayQuery.rows[0].count);
 
-    const activeBatchesQuery = await pool.query(`SELECT COUNT(*) as count FROM shipping_batches WHERE status IN ('planned', 'open')`);
+    const activeBatchesQuery = await pool.query(`SELECT COUNT(*) as count FROM shipping_batches WHERE batch_status_code IN ('PLANNED', 'OPEN')`);
     activeBatches = parseInt(activeBatchesQuery.rows[0].count);
 
     const hubPackagesQuery = await pool.query(`SELECT COUNT(*) as count FROM inbound_packages WHERE package_status_code = 'RECEIVED_AT_HUB'`);
