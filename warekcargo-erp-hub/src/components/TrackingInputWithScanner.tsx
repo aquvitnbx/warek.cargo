@@ -1,23 +1,25 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-export default function TrackingInputWithScanner() {
+interface Props {
+  isPending?: boolean;
+}
+
+export default function TrackingInputWithScanner({ isPending = false }: Props) {
   const [value, setValue] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
 
   const addLog = (msg: string) => {
     setDebugLog(prev => [...prev, msg]);
   };
 
   const handleScanClick = () => {
-    // Bukti nyata bahwa tombol ditekan
-    alert("Berhasil! Tombol SCAN dari HP sukses bereaksi (Hydration JS aktif).");
-    
-    addLog('Tombol SCAN ditekan');
+    addLog('Mengaktifkan mode kamera cadangan...');
     setIsScanning(!isScanning);
   };
 
@@ -39,7 +41,7 @@ export default function TrackingInputWithScanner() {
       if (result) {
          addLog('BERHASIL! Barcode: ' + result.getText());
          setValue(result.getText());
-         // Bunyi beep otomatis jika ada
+         // Bunyi beep otomatis
          try {
            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
            const ctx = new AudioContext();
@@ -57,10 +59,18 @@ export default function TrackingInputWithScanner() {
     }
   };
 
+  // Pastikan tetap autofocus saat re-render
+  useEffect(() => {
+    if (!isPending && textInputRef.current) {
+      textInputRef.current.focus();
+    }
+  }, [isPending]);
+
   return (
     <>
-      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-        Resi Ekspedisi (Tracking No.)
+      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex justify-between items-end">
+        <span>Resi Ekspedisi (Tracking No.)</span>
+        <span className="text-blue-500 font-medium">SCANNER READY</span>
       </label>
       
       {isScanning && (
@@ -74,7 +84,7 @@ export default function TrackingInputWithScanner() {
 
            <div className="pt-8 pb-8 px-6 flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center text-4xl">📸</div>
-              <p className="text-white text-xs font-medium">Arahkan kamera ke barcode/resi.</p>
+              <p className="text-white text-xs font-medium">Ini adalah fitur sekunder. Gunakan Scanner Bluetooth untuk kecepatan.</p>
               
               <button 
                 type="button" 
@@ -84,7 +94,7 @@ export default function TrackingInputWithScanner() {
                 }}
                 className="mt-4 px-8 py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black uppercase tracking-widest rounded-xl text-sm transition-all"
               >
-                 Buka Kamera & Jepret (Aman)
+                 Buka Kamera & Jepret (Lambat)
               </button>
               <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleFileUpload} />
            </div>
@@ -111,24 +121,48 @@ export default function TrackingInputWithScanner() {
              </svg>
           </div>
           <input 
+            ref={textInputRef}
             type="text" 
             name="tracking_number" 
-            required 
+            required
+            autoFocus
+            disabled={isPending}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Contoh: JX29..." 
-            className="w-full pl-12 pr-4 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl font-mono text-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-black tracking-wider uppercase shadow-inner"
+            placeholder="Arahkan Scanner & Scan..." 
+            className="w-full pl-12 pr-12 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl font-mono text-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-black tracking-wider shadow-inner"
           />
+          
+          {/* Tombol Clear untuk membersihkan teks dengan cepat */}
+          {value && !isPending && (
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setValue('');
+                  textInputRef.current?.focus();
+                }}
+                className="w-6 h-6 bg-slate-200 hover:bg-slate-300 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
+        
+        {/* Tombol Kamera disembunyikan/dikecilkan agar tidak mengganggu flow utama bluetooth */}
         <button
           type="button"
           onClick={handleScanClick}
-          className="w-20 sm:w-24 bg-blue-100 hover:bg-transparent text-blue-700 font-black rounded-2xl flex flex-col items-center justify-center transition-colors border-[3px] border-blue-500 focus:outline-none active:bg-blue-200"
+          disabled={isPending}
+          title="Gunakan Kamera HP (Lambat)"
+          className="w-14 sm:w-16 bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-2xl flex flex-col items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
         >
-          <svg className="w-8 h-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
           </svg>
-          <span className="text-[10px] uppercase tracking-widest leading-none">SCAN</span>
         </button>
       </div>
     </>
