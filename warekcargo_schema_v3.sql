@@ -277,7 +277,7 @@ create table if not exists package_photos (
 create table if not exists customer_shipments (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references customers(id),
-    batch_id uuid not null references shipping_batches(id),
+    batch_id uuid references shipping_batches(id),
     shipment_code text not null unique,
     service_type_code text not null references ref_service_types(code),
     container_number text,
