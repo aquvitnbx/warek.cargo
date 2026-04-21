@@ -16,7 +16,7 @@ export default async function DeliveryDashboardPage() {
          c.full_name, c.whatsapp_number, c.destination_city
       FROM customer_shipments s
       JOIN customers c ON s.customer_id = c.id
-      WHERE s.shipment_status_code IN ('ARRIVED_NABIRE', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED')
+      WHERE s.shipment_status_code IN ('ARRIVED_DESTINATION', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED')
         AND s.pickup_delivery_status_code != 'DELIVERED' 
         AND s.pickup_delivery_status_code != 'PICKED_UP'
       ORDER BY s.updated_at DESC

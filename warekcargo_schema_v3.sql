@@ -525,7 +525,7 @@ insert into ref_shipment_statuses (code, name, sort_order) values
 ('AWAITING_PACKAGES', 'Awaiting Packages', 2),
 ('READY_FOR_DISPATCH', 'Ready for Dispatch', 3),
 ('DISPATCHED', 'Dispatched', 4),
-('ARRIVED_NABIRE', 'Arrived Nabire', 5),
+('ARRIVED_DESTINATION', 'Arrived at Destination Hub', 5),
 ('READY_FOR_PICKUP', 'Ready for Pickup', 6),
 ('OUT_FOR_DELIVERY', 'Out for Delivery', 7),
 ('COMPLETED', 'Completed', 8),
