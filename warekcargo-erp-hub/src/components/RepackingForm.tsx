@@ -112,18 +112,34 @@ export default function RepackingForm({ shipmentId, shipment, packages }: Repack
                ></textarea>
              </div>
 
-             <div className="bg-amber-50 p-4 border border-amber-200 rounded-xl">
-                 <p className="text-[10px] text-amber-800 font-bold uppercase tracking-widest mb-1 flex items-center gap-1"><span className="text-sm">⚠️</span> Shortcut Info (Foto)</p>
-                 <p className="text-xs text-amber-700 font-medium">Doktrin Schema V3 saat ini hanya mendukung *package_photos* untuk per-resi. Fitur foto karung (*shipment_photos*) akan diaktifkan setelah tabel database di-upgrade.</p>
+             {shipment.shipment_status_code === 'READY_FOR_DISPATCH' && (
+                 <div className="bg-amber-50 p-4 border border-amber-200 rounded-xl mt-4">
+                     <label className="block text-[10px] uppercase font-bold tracking-widest text-amber-800 mb-2 flex items-center gap-2">
+                        Alasan Koreksi Dimensi <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[8px]">WAJIB DISI</span>
+                     </label>
+                     <p className="text-xs text-amber-700 font-medium mb-3">Anda mengedit karung yang sudah disegel. Perubahan fisik akan dicatat di <strong>Audit Log</strong>.</p>
+                     <textarea 
+                        name="revision_note" 
+                        rows={2} 
+                        required
+                        className="w-full p-3 bg-white border border-amber-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                        placeholder="Contoh: Salah timbang, harusnya 50kg bukan 5kg..."
+                     ></textarea>
+                 </div>
+             )}
+
+             <div className="bg-blue-50 p-4 border border-blue-200 rounded-xl mt-4">
+                 <p className="text-[10px] text-blue-800 font-bold uppercase tracking-widest mb-1 flex items-center gap-1"><span className="text-sm">⚠️</span> Shortcut Info (Foto)</p>
+                 <p className="text-xs text-blue-700 font-medium">Doktrin Schema V3 saat ini hanya mendukung *package_photos* untuk per-resi. Fitur foto karung (*shipment_photos*) akan diaktifkan setelah tabel database di-upgrade.</p>
              </div>
           </div>
 
           <button 
              type="submit" 
              disabled={isPending}
-             className="w-full mt-6 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-black tracking-widest rounded-xl shadow-[0_8px_20px_rgb(16,185,129,0.3)] active:scale-[0.98] transition-all"
+             className={`w-full mt-6 py-4 disabled:bg-slate-400 text-white font-black tracking-widest rounded-xl transition-all shadow-sm ${shipment.shipment_status_code === 'READY_FOR_DISPATCH' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
-             {isPending ? 'MENYIMPAN...' : 'FINALISASI & SEGEL'}
+             {isPending ? 'MENYIMPAN...' : shipment.shipment_status_code === 'READY_FOR_DISPATCH' ? 'KOREKSI & CATAT LOG' : 'FINALISASI & SEGEL'}
           </button>
        </div>
     </form>

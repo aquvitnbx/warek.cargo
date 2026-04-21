@@ -272,6 +272,26 @@ create table if not exists master_pricing_rates (
 
 create index if not exists idx_master_pricing_rates_origin_dest on master_pricing_rates(origin_hub_id, destination_city, service_type_code);
 
+-- =====================================================================
+-- 6.8. System Audit Trail Logging
+-- =====================================================================
+create table if not exists system_audit_logs (
+    id uuid primary key default gen_random_uuid(),
+    entity_name text not null,
+    entity_id uuid not null,
+    action_type text not null,
+    changes_json jsonb not null,
+    source_module text,
+    source_action text,
+    revision_note text,
+    revised_by text,
+    revised_at timestamptz not null default now(),
+    related_shipment_id uuid,
+    related_package_id uuid
+);
+
+create index if not exists idx_sys_audit_entity on system_audit_logs(entity_name, entity_id);
+
 
 create table if not exists inbound_package_status_history (
     id uuid primary key default gen_random_uuid(),

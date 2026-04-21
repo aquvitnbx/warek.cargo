@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 export async function setFinalCharge(formData: FormData) {
   const shipmentId = formData.get('shipment_id') as string;
   const chargeAmount = parseFloat(formData.get('final_charge_amount') as string);
+  const revisionNote = formData.get('revision_note') as string || 'Penetapan Harga Awal Bebas Override';
 
   if (!shipmentId) return { success: false, message: 'ID Karung tidak ditemukan.' };
   if (isNaN(chargeAmount) || chargeAmount < 1000) return { success: false, message: 'Nilai tagihan tidak masuk akal.' };
@@ -13,12 +14,53 @@ export async function setFinalCharge(formData: FormData) {
   const client = await pool.connect();
 
   try {
-    // Kunci tagihan. Status akan jadi PENDING karena amount_paid = 0
+    await client.query('BEGIN');
+
+    // Cek Status (Hard Lock Cek)
+    const resShp = await client.query('SELECT final_charge_amount, payment_status_code FROM customer_shipments WHERE id = $1 FOR UPDATE', [shipmentId]);
+    if (resShp.rows.length === 0) throw new Error('Resi Karung tidak ditemukan di sistem.');
+
+    const oldCharge = resShp.rows[0].final_charge_amount;
+    const isPaid = resShp.rows[0].payment_status_code === 'PAID';
+
+    // 🔴 HARD LOCK MUTLAK: Tagihan yang Lunas tak boleh dimanipulasi manual ke bawah
+    if (isPaid && oldCharge !== null) {
+       throw new Error('Sistem terkunci (HARD LOCK). Tagihan yang berstatus LUNAS (PAID) mutlak tidak dapat diedit nilai charge-nya.');
+    }
+
+    if (oldCharge !== null && revisionNote.length < 5) {
+       throw new Error('Soft-Edit Ditolak: Anda memodifikasi tagihan lama namun keterangan "Alasan Koreksi" terlalu pendek/kosong.');
+    }
+
+    // 1. Eksekusi Perubahan Utama
     await client.query(`
       UPDATE customer_shipments 
       SET final_charge_amount = $1, payment_status_code = 'PENDING', updated_at = NOW()
       WHERE id = $2
     `, [chargeAmount, shipmentId]);
+
+    // 2. Tembak peluru Histori (The JSONB Logger)
+    const jsonChanges = JSON.stringify({
+        "final_charge_amount": {
+            "old": oldCharge ? Number(oldCharge) : null,
+            "new": chargeAmount
+        }
+    });
+
+    await client.query(`
+      INSERT INTO system_audit_logs (
+        entity_name, entity_id, action_type, changes_json,
+        source_module, source_action, revision_note, revised_by, related_shipment_id
+      ) VALUES (
+        $1, $2, $3, $4, 
+        $5, $6, $7, $8, $9
+      )
+    `, [
+       'CUSTOMER_SHIPMENT', shipmentId, 'OVERRIDE_FINAL_CHARGE', jsonChanges,
+       'FINANCE_CASHIER', 'setFinalCharge', revisionNote, 'Admin Kasir Sesi', shipmentId
+    ]);
+
+    await client.query('COMMIT');
 
     revalidatePath('/finance');
     revalidatePath(`/finance/${shipmentId}`);
@@ -26,6 +68,7 @@ export async function setFinalCharge(formData: FormData) {
     return { success: true };
 
   } catch (err: any) {
+    await client.query('ROLLBACK');
     console.error('Set Charge Error:', err);
     return { success: false, message: err.message || 'Gagal menyimpan tagihan.' };
   } finally {

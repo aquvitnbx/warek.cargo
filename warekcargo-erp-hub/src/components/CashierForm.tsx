@@ -140,6 +140,18 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                       Alasan Tagihan Bersih <span className="text-red-500 bg-red-50 px-1 rounded">WAJIB</span>
+                    </label>
+                    <textarea 
+                      name="revision_note" 
+                      required
+                      placeholder="Contoh: Sesuai Harga AutoPricing, atau Diskon 50rb kesepakatan Bapak X"
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                    ></textarea>
+                  </div>
                 </div>
 
                 <button 
