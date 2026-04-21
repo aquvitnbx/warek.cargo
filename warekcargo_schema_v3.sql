@@ -252,6 +252,27 @@ create table if not exists inbound_packages (
     updated_at timestamptz not null default now()
 );
 
+-- =====================================================================
+-- 6.5. Pricing Rates / Tariff Master
+-- =====================================================================
+create table if not exists master_pricing_rates (
+    id uuid primary key default gen_random_uuid(),
+    origin_hub_id uuid not null,
+    destination_city text not null,
+    service_type_code text not null,
+    price_per_kg numeric(14,2) not null default 0,
+    price_per_m3 numeric(14,2) not null default 0,
+    min_weight_kg numeric(10,2) not null default 0,
+    min_volume_m3 numeric(10,4) not null default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique(origin_hub_id, destination_city, service_type_code)
+);
+
+create index if not exists idx_master_pricing_rates_origin_dest on master_pricing_rates(origin_hub_id, destination_city, service_type_code);
+
+
 create table if not exists inbound_package_status_history (
     id uuid primary key default gen_random_uuid(),
     inbound_package_id uuid not null references inbound_packages(id) on delete cascade,

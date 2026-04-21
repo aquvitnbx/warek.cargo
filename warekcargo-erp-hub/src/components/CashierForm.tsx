@@ -24,12 +24,29 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
   const isPaidOff = shipment.payment_status_code === 'PAID';
   const remaining = bill - paid;
 
-  // Saran Estimasi Kasar:
-  // Volume m3 * Rp 1.500.000 (1 kubik) atau Berat kg * Rp 15.000 
-  // Ambil yang paling tinggi (Volume weight standard logic)
-  const volEst = Number(shipment.total_volume_m3) * 1500000;
-  const wgtEst = Number(shipment.total_weight_kg) * 15000;
-  const standardEstimate = Math.max(volEst, wgtEst);
+  // Logika Auto Pricing Engine berbasis Master Rate 
+  const rate = shipment.pricing_rate;
+  let standardEstimate = 0;
+  let chargeBreakdown = null;
+
+  if (rate) {
+     const weightKg = Number(shipment.total_weight_kg) || 0;
+     const volM3 = Number(shipment.total_volume_m3) || 0;
+     
+     const appliedWeight = Math.max(weightKg, Number(rate.min_weight_kg));
+     const appliedVol = Math.max(volM3, Number(rate.min_volume_m3));
+
+     const costWgt = appliedWeight * Number(rate.price_per_kg);
+     const costVol = appliedVol * Number(rate.price_per_m3);
+     
+     if (costWgt >= costVol) {
+        standardEstimate = costWgt;
+        chargeBreakdown = { type: 'BERAT', amount: appliedWeight, unit: 'Kg', cost: costWgt };
+     } else {
+        standardEstimate = costVol;
+        chargeBreakdown = { type: 'VOLUME', amount: appliedVol, unit: 'm³', cost: costVol };
+     }
+  }
 
   const handleSetCharge = async (e: React.FormEvent<HTMLFormElement>) => {
      e.preventDefault();
@@ -90,10 +107,25 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
                    <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded uppercase">Tahap 1</span>
                 </h3>
                 
-                <div className="bg-slate-50 p-4 border border-dashed border-slate-200 rounded-xl mb-4 text-center">
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Estimasi Sistem (Tertinggi antara Vol & Berat)</p>
-                   <p className="font-black text-xl text-slate-700 mt-1">{formatIdr(standardEstimate)}</p>
-                </div>
+                {rate ? (
+                    <div className="bg-blue-50/50 p-4 border border-dashed border-blue-200 rounded-xl mb-5 text-left text-sm text-blue-900 shadow-inner">
+                       <p className="font-bold flex items-center gap-2 mb-2">
+                          <span className="bg-blue-200 text-blue-800 p-1 rounded">⚙️</span> 
+                          Rekomendasi Auto-Pricing (Tarif Master)
+                       </p>
+                       <p className="leading-relaxed">
+                          Sistem menyarankan <strong>{formatIdr(standardEstimate)}</strong> berdasarkan perhitungan titik <strong className="uppercase bg-blue-100 px-1 rounded">{chargeBreakdown?.type}</strong>: <br/> 
+                          <span className="font-mono text-xs">{chargeBreakdown?.amount} {chargeBreakdown?.unit}</span> x rate dasar {chargeBreakdown?.type === 'BERAT' ? formatIdr(Number(rate.price_per_kg)) : formatIdr(Number(rate.price_per_m3))}.
+                       </p>
+                       <p className="text-[10px] uppercase font-bold tracking-widest text-blue-500 mt-2">* Admin dapat mengubah angka di bawah jika diperlukan (diskon/nego).</p>
+                    </div>
+                ) : (
+                    <div className="bg-amber-50 p-4 border border-dashed border-amber-200 rounded-xl mb-4 text-center">
+                       <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest leading-relaxed">Peringatan: Master Rate Rute Belum Diatur</p>
+                       <p className="text-xs text-amber-800 mt-1">Harap tentukan tagihan final secara manual dengan kesepakatan.</p>
+                       <input type="hidden" name="no_rate_found" value="1" />
+                    </div>
+                )}
 
                 <div className="space-y-4">
                   <input type="hidden" name="shipment_id" value={shipment.id} />

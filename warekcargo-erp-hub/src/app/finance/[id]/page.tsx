@@ -17,9 +17,11 @@ export default async function FinanceDetailPage({ params }: { params: Promise<{ 
      const resShp = await pool.query(`
         SELECT 
            s.*, 
-           c.full_name, c.whatsapp_number, c.destination_city 
+           c.full_name, c.whatsapp_number, c.destination_city,
+           b.hub_id as origin_hub_id 
         FROM customer_shipments s
         JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN shipping_batches b ON s.batch_id = b.id
         WHERE s.id = $1
      `, [shipmentId]);
      shipment = resShp.rows[0];
@@ -39,6 +41,22 @@ export default async function FinanceDetailPage({ params }: { params: Promise<{ 
        // Fetch Enum Methods
        const resMeth = await pool.query(`SELECT code, name FROM ref_payment_methods WHERE is_active = true`);
        paymentMethods = resMeth.rows;
+
+       // FETCH PRICING ENGINE RATE
+       if (!shipment.final_charge_amount && shipment.origin_hub_id) {
+          const resRate = await pool.query(`
+             SELECT * FROM master_pricing_rates 
+             WHERE origin_hub_id = $1 
+               AND destination_city = $2 
+               AND service_type_code = $3 
+               AND is_active = true
+             LIMIT 1
+          `, [shipment.origin_hub_id, shipment.destination_city, shipment.service_type_code]);
+          
+          if (resRate.rows.length > 0) {
+             shipment.pricing_rate = resRate.rows[0];
+          }
+       }
      }
   } catch (err: any) {
      dbError = err.message || "Gagal terkoneksi ke Database.";
