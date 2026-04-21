@@ -20,7 +20,7 @@ export default function RootLayout({
       <body className={`${font.className} min-h-screen flex flex-col md:flex-row pb-20 md:pb-0 bg-slate-50 text-slate-800`}>
         
         {/* SIDEBAR NAVIGATION (DESKTOP) */}
-        <aside className="hidden md:flex flex-col w-72 bg-blue-900 text-white min-h-screen p-6 shadow-xl flex-shrink-0 relative overflow-hidden z-20">
+        <aside className="hidden md:flex flex-col w-72 bg-blue-900 text-white min-h-screen p-6 shadow-xl flex-shrink-0 relative overflow-hidden z-20 print:hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-[80px] opacity-50 pointer-events-none"></div>
           
           <div className="text-3xl font-black mb-10 pb-6 border-b border-blue-800 tracking-tight relative flex items-center gap-2">
@@ -52,6 +52,9 @@ export default function RootLayout({
             <Link href="/finance" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">💳</span> Kasir & Tagihan
             </Link>
+            <Link href="/delivery" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors border border-purple-800 border-dashed text-purple-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">🚚</span> Pindah Tangan
+            </Link>
             <Link href="/tracking" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4 mt-6">
               <span className="text-xl">📡</span> Radar Pelacakan
             </Link>
@@ -59,9 +62,9 @@ export default function RootLayout({
         </aside>
 
         {/* CONTAINER KONTEN UTAMA */}
-        <main className="flex-1 w-full overflow-y-auto">
+        <main className="flex-1 w-full overflow-y-auto print:p-0">
           {/* HEADER (MOBILE) */}
-          <header className="md:hidden bg-blue-900 text-white p-5 sticky top-0 z-30 flex justify-between items-center shadow-md">
+          <header className="md:hidden bg-blue-900 text-white p-5 sticky top-0 z-30 flex justify-between items-center shadow-md print:hidden">
             <h1 className="text-xl font-bold tracking-tight">WarekCargo Hub</h1>
             <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center font-bold">W</div>
           </header>
@@ -72,7 +75,7 @@ export default function RootLayout({
         </main>
 
         {/* BOTTOM NAVIGATION (MOBILE) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-50 text-[10px] font-bold text-slate-500 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe-area">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-50 text-[10px] font-bold text-slate-500 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe-area print:hidden">
           <Link href="/" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-16">
             <span className="text-2xl mb-1">📊</span> Home
           </Link>
@@ -98,6 +101,9 @@ export default function RootLayout({
           </Link>
           <Link href="/finance" className="flex flex-col items-center p-2 pt-3 hover:text-amber-600 transition-colors w-12 text-center text-[9px]">
             <span className="text-2xl mb-1">💳</span> Pay
+          </Link>
+          <Link href="/delivery" className="flex flex-col items-center p-2 pt-3 hover:text-purple-600 transition-colors w-12 text-center text-[9px]">
+            <span className="text-2xl mb-1">🚚</span> Go
           </Link>
           <Link href="/tracking" className="flex flex-col items-center p-2 pt-3 hover:text-indigo-600 transition-colors w-12 text-center text-[9px]">
             <span className="text-2xl mb-1">📡</span> Track
