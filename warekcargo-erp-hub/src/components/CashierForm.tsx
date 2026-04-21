@@ -52,13 +52,14 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
      e.preventDefault();
      setIsPending(true);
      setFeedback(null);
-     const formData = new FormData(e.currentTarget);
+     const formElement = e.currentTarget;
+     const formData = new FormData(formElement);
      
      try {
        const res = await addPayment(formData);
        if (res.success) {
           setFeedback({ type: 'success', msg: 'Pembayaran berhasil dicatat!' });
-          e.currentTarget.reset();
+          formElement.reset();
        } else {
           setFeedback({ type: 'error', msg: res.message });
        }
