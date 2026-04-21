@@ -113,9 +113,7 @@ export default async function TrackingDashboard({ searchParams }: { searchParams
                    if (['ARRIVED', 'RECEIVED'].includes(shp.shipment_status_code)) shipColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
 
                    return (
-                   <tr key={shp.id} className="hover:bg-slate-50 transition-colors group cursor-pointer" onClick={() => {
-                        // Normally handled via link, but we put it row level
-                   }}>
+                   <tr key={shp.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="p-4">
                          <div className="flex flex-col items-start gap-1">
                             <span className="font-mono font-black tracking-wide text-sm text-slate-700">{shp.shipment_code}</span>
