@@ -52,6 +52,9 @@ export default function RootLayout({
             <Link href="/finance" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">💳</span> Kasir & Tagihan
             </Link>
+            <Link href="/tracking" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4 mt-6">
+              <span className="text-xl">📡</span> Radar Pelacakan
+            </Link>
           </nav>
         </aside>
 
@@ -95,6 +98,9 @@ export default function RootLayout({
           </Link>
           <Link href="/finance" className="flex flex-col items-center p-2 pt-3 hover:text-amber-600 transition-colors w-12 text-center text-[9px]">
             <span className="text-2xl mb-1">💳</span> Pay
+          </Link>
+          <Link href="/tracking" className="flex flex-col items-center p-2 pt-3 hover:text-indigo-600 transition-colors w-12 text-center text-[9px]">
+            <span className="text-2xl mb-1">📡</span> Track
           </Link>
         </nav>
       </body>
