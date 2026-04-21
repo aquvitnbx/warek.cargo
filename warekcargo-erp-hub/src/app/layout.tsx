@@ -49,6 +49,9 @@ export default function RootLayout({
             <Link href="/repacking" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors border border-emerald-800 border-dashed text-emerald-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">⚖️</span> Timbang Repack
             </Link>
+            <Link href="/finance" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">💳</span> Kasir & Tagihan
+            </Link>
           </nav>
         </aside>
 
@@ -89,6 +92,9 @@ export default function RootLayout({
           </Link>
           <Link href="/repacking" className="flex flex-col items-center p-2 pt-3 hover:text-emerald-600 transition-colors w-12 text-center text-[9px]">
             <span className="text-2xl mb-1">⚖️</span> Scale
+          </Link>
+          <Link href="/finance" className="flex flex-col items-center p-2 pt-3 hover:text-amber-600 transition-colors w-12 text-center text-[9px]">
+            <span className="text-2xl mb-1">💳</span> Pay
           </Link>
         </nav>
       </body>
