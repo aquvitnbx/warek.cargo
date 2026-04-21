@@ -34,6 +34,15 @@ const db = {
       }
       throw new Error(error.message); // Kembalikan ke Component agar UI bisa merender Alert
     }
+  },
+  connect: async () => {
+    if (!pgPool) throw new Error("pgPool tidak terinisiasi. Periksa ENV.");
+    try {
+      return await pgPool.connect();
+    } catch (error: any) {
+       console.error(`❌ [WarekCargo DB Connect]: ${error.message}`);
+       throw new Error(`Koneksi DB Gagal: ${error.message}`);
+    }
   }
 };
 
