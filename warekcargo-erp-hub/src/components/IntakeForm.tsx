@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import TrackingInputWithScanner from './TrackingInputWithScanner';
-import { submitIncomingPackage } from '@/app/intake/actions';
+import { submitIncomingPackage, createCustomerInline } from '@/app/intake/actions';
 
 interface IntakeFormProps {
   hubs: { code: string; name: string }[];
@@ -17,6 +17,12 @@ export default function IntakeForm({ hubs, statuses, customers = [] }: IntakeFor
   // Use a key to force re-mount the TrackingInput component after submit
   // so it resets its internal value and triggers autoFocus again
   const [scanKey, setScanKey] = useState(0);
+
+  // Quick Add Customer State
+  const [customerList, setCustomerList] = useState(customers);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Prevent full page reload & drop-down reset
@@ -52,6 +58,29 @@ export default function IntakeForm({ hubs, statuses, customers = [] }: IntakeFor
     } finally {
       setIsPending(false);
     }
+  };
+
+  const handleQuickAddCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setIsAddingCustomer(true);
+     const form = e.currentTarget;
+     const formData = new FormData(form);
+
+     try {
+        const result = await createCustomerInline(formData);
+        if (result.success && result.data) {
+           setCustomerList(prev => [result.data, ...prev]);
+           setSelectedCustomerId(result.data.id);
+           setShowCustomerModal(false);
+           // Show success toast on main feedback? Maybe not necessary, just close modal.
+        } else {
+           alert(result.message || 'Gagal membuat pelanggan.');
+        }
+     } catch (err: any) {
+        alert(err.message || 'Error koneksi.');
+     } finally {
+        setIsAddingCustomer(false);
+     }
   };
 
   return (
@@ -117,10 +146,20 @@ export default function IntakeForm({ hubs, statuses, customers = [] }: IntakeFor
 
         {/* CUSTOMER ASSIGNMENT */}
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pelanggan Pemilik (Assign Customer)</label>
-          <select name="customer_id" className="w-full p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer">
+          <div className="flex justify-between items-center mb-2">
+             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pelanggan Pemilik (Assign Customer)</label>
+             <button type="button" onClick={() => setShowCustomerModal(true)} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors uppercase tracking-widest">
+                + Customer Baru
+             </button>
+          </div>
+          <select 
+            name="customer_id" 
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+            className="w-full p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+          >
             <option value="">-- Assign Later / Unidentified (Kosong) --</option>
-            {customers.map((c) => (
+            {customerList.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.full_name} {c.customer_code ? `[${c.customer_code}]` : ''} - {c.whatsapp_number}
               </option>
@@ -193,6 +232,48 @@ export default function IntakeForm({ hubs, statuses, customers = [] }: IntakeFor
           {isPending ? 'MENYIMPAN...' : 'PROSES PAKET SEKARANG'}
         </button>
       </form>
+
+      {/* MODAL QUICK ADD CUSTOMER */}
+      {showCustomerModal && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <h3 className="font-black text-slate-800 tracking-wide flex items-center gap-2">
+                     <span className="text-xl">👤</span> Tambah Pelanggan
+                  </h3>
+                  <button type="button" onClick={() => setShowCustomerModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+                     ✕
+                  </button>
+               </div>
+               <form onSubmit={handleQuickAddCustomer} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Nama Lengkap</label>
+                    <input type="text" name="full_name" required autoFocus placeholder="Budi Santoso" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Nomor WhatsApp</label>
+                    <div className="flex bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 overflow-hidden">
+                      <span className="p-3 bg-slate-100 text-slate-500 font-bold border-r border-slate-200">62</span>
+                      <input type="tel" name="whatsapp_number" required placeholder="81234567890" className="w-full p-3 bg-transparent font-bold text-slate-800 focus:outline-none placeholder-slate-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Kota Tujuan</label>
+                    <input type="text" name="destination_city" defaultValue="Nabire" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  
+                  <div className="pt-4 flex gap-3">
+                     <button type="button" onClick={() => setShowCustomerModal(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
+                        Batal
+                     </button>
+                     <button type="submit" disabled={isAddingCustomer} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-black tracking-widest rounded-xl transition-colors">
+                        {isAddingCustomer ? 'SIMPAN...' : 'SIMPAN'}
+                     </button>
+                  </div>
+               </form>
+            </div>
+         </div>
+      )}
 
     </div>
   );

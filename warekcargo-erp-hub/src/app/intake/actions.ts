@@ -116,3 +116,37 @@ export async function submitIncomingPackage(formData: FormData) {
     return { success: false, message: error.message || 'Gagal.' };
   }
 }
+
+export async function createCustomerInline(formData: FormData) {
+  const full_name = formData.get('full_name')?.toString() || '';
+  let whatsapp_number = formData.get('whatsapp_number')?.toString() || '';
+  const destination_city = formData.get('destination_city')?.toString() || 'Nabire';
+
+  if (!full_name || !whatsapp_number) {
+     return { success: false, message: 'Nama dan WhatsApp wajib diisi.' };
+  }
+
+  // Sanity check WA
+  whatsapp_number = whatsapp_number.replace(/\D/g, '');
+  if (!whatsapp_number.startsWith('62')) {
+    whatsapp_number = '62' + whatsapp_number.replace(/^0+/, '');
+  }
+
+  try {
+     const res = await pool.query(`
+        INSERT INTO customers (full_name, whatsapp_number, destination_city)
+        VALUES ($1, $2, $3)
+        RETURNING id, full_name, whatsapp_number, customer_code
+     `, [full_name, whatsapp_number, destination_city]);
+     
+     // Optionally trigger a revalidatePath if the list is fetched on the server
+     revalidatePath('/intake');
+     
+     return { success: true, data: res.rows[0] };
+  } catch (err: any) {
+    if (err.code === '23505') {
+       return { success: false, message: 'Nomor WhatsApp sudah terdaftar.' };
+    }
+    return { success: false, message: err.message || 'Gagal menyimpan customer.' };
+  }
+}

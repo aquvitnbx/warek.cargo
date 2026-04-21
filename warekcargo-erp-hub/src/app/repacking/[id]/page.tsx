@@ -1,6 +1,7 @@
 import pool from '@/lib/db';
 import Link from 'next/link';
 import RepackingForm from '@/components/RepackingForm';
+import PrintButton from '@/components/PrintButton';
 
 export const revalidate = 0;
 
@@ -60,10 +61,15 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
             </svg>
             Kembali ke Antrean
           </Link>
-          <h2 className="text-3xl md:text-3xl font-black tracking-tight text-slate-800 flex items-center gap-3">
-             Finalisasi & Timbang Karung
-          </h2>
-          <div className="mt-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+            <h2 className="text-3xl md:text-3xl font-black tracking-tight text-slate-800 flex items-center gap-3">
+               Finalisasi & Timbang Karung
+            </h2>
+            {shipment?.shipment_status_code !== 'PENDING' && shipment?.shipment_status_code !== 'RECEIVED_AT_HUB' && (
+               <PrintButton />
+            )}
+          </div>
+          <div className="mt-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
              <div className="flex flex-col">
                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Kode Shipment</span>
                <span className="font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded inline-block w-fit mt-1">{shipment?.shipment_code}</span>
@@ -90,11 +96,67 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
        )}
 
        {!dbError && (
-          <RepackingForm 
-             shipmentId={shipmentId}
-             shipment={shipment}
-             packages={packages} 
-          />
+          <div className="print:hidden">
+            <RepackingForm 
+               shipmentId={shipmentId}
+               shipment={shipment}
+               packages={packages} 
+            />
+          </div>
+       )}
+
+       {/* PRINTABLE LABEL THERMAL (HIDDEN ON SCREEN, SHOWN ON PRINT) */}
+       {shipment && (
+          <div className="hidden print:block w-[100mm] text-black bg-white mx-auto font-sans leading-snug">
+             <div className="border-4 border-black p-4 mb-2">
+                <div className="text-center border-b-4 border-black pb-3 mb-3">
+                   <h1 className="text-3xl font-black uppercase tracking-tight">WAREKCARGO</h1>
+                   <p className="text-sm font-bold mt-1">LOGISTIK & EKSPEDISI</p>
+                </div>
+                
+                <div className="text-center border-b-4 border-black pb-4 mb-3">
+                   <div className="text-sm font-black uppercase mb-1">KODE RESI KARUNG</div>
+                   <div className="text-3xl font-black tracking-widest">{shipment.shipment_code}</div>
+                </div>
+
+                <div className="mb-3 space-y-2">
+                   <div className="flex justify-between items-start border-b border-black pb-2">
+                      <span className="font-bold text-xs uppercase">Tujuan:</span>
+                      <span className="font-black text-2xl text-right uppercase leading-none">{shipment.destination_city}</span>
+                   </div>
+                   <div className="flex justify-between items-center border-b border-black pb-2">
+                      <span className="font-bold text-xs uppercase">Penerima:</span>
+                      <span className="font-black text-lg text-right">{shipment.full_name}</span>
+                   </div>
+                   <div className="flex justify-between items-center border-b border-black pb-2">
+                      <span className="font-bold text-xs uppercase">No HP:</span>
+                      <span className="font-black text-lg text-right">{shipment.whatsapp_number}</span>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center border-t-4 border-black pt-3">
+                   <div className="border-r border-black">
+                      <div className="text-[10px] font-bold uppercase">Berat</div>
+                      <div className="font-black text-xl">{shipment.total_weight_kg || '-'} <span className="text-xs">kg</span></div>
+                   </div>
+                   <div className="border-r border-black">
+                      <div className="text-[10px] font-bold uppercase">Volume</div>
+                      <div className="font-black text-xl">{shipment.total_volume_m3 || '-'} <span className="text-xs">m³</span></div>
+                   </div>
+                   <div>
+                      <div className="text-[10px] font-bold uppercase">Isi</div>
+                      <div className="font-black text-xl">{packages.length} <span className="text-xs">pcs</span></div>
+                   </div>
+                </div>
+             </div>
+             
+             <div className="text-center text-[10px] font-bold mt-2">
+                Dicetak pada: {new Date().toLocaleString('id-ID')}
+             </div>
+             <div className="text-center text-[10px] mt-1 break-all">
+                Cek resi di: app.warekcargo.web.id
+             </div>
+          </div>
        )}
     </div>
   )
