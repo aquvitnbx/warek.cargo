@@ -2,6 +2,7 @@
 
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { processShipmentNotification } from '@/lib/notifications';
 
 export async function createBatch(formData: FormData) {
   const hubId = formData.get('hub_id') as string;
@@ -78,6 +79,9 @@ export async function assignShipmentsToBatch(formData: FormData, selectedShipmen
          INSERT INTO shipment_status_history (shipment_id, from_status_code, to_status_code, changed_source, change_notes)
          VALUES ($1, $2, 'DISPATCHED', 'BATCH_MODULE', 'Masuk ke jadwal kapal')
        `, [shipmentId, fromStatus]);
+
+       // Trigger Notification
+       await processShipmentNotification(shipmentId, 'DISPATCHED', client);
     }
 
     await client.query('COMMIT');
@@ -91,6 +95,74 @@ export async function assignShipmentsToBatch(formData: FormData, selectedShipmen
     await client.query('ROLLBACK');
     console.error('Batch Assignment Error:', err);
     return { success: false, message: err.message || 'Gagal asign karung.' };
+  } finally {
+    client.release();
+  }
+}
+
+export async function removeShipmentFromBatch(shipmentId: string, batchId: string, revisionNote: string) {
+  if (!shipmentId || !batchId) return { success: false, message: 'ID tidak valid.' };
+  if (!revisionNote || revisionNote.length < 5) return { success: false, message: 'Alasan pencabutan (Revision Note) wajib diisi dengan jelas.' };
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Cek status saat ini dan keabsahan batch_id
+    const resPrev = await client.query('SELECT shipment_status_code, batch_id FROM customer_shipments WHERE id = $1 FOR UPDATE', [shipmentId]);
+    if (resPrev.rows.length === 0) throw new Error('Shipment tidak ditemukan.');
+    const oldStatus = resPrev.rows[0].shipment_status_code;
+    const currentBatchId = resPrev.rows[0].batch_id;
+
+    if (currentBatchId !== batchId) throw new Error('Shipment ini tidak terdaftar pada batch tersebut.');
+
+    // 2. Terapkan HARD LOCK jika sudah melewati batas pelabuhan tujuan
+    const lockedStatuses = ['ARRIVED_DESTINATION', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED'];
+    if (lockedStatuses.includes(oldStatus)) {
+       throw new Error(`Sistem Terkunci (HARD LOCK). Kapal telah dinyatakan berlabuh/tiba (${oldStatus}). Resi tidak dapat dibatalkan dari manifest riwayat.`);
+    }
+
+    // 3. Eksekusi pencabutan (Atomik)
+    await client.query(`
+      UPDATE customer_shipments
+      SET batch_id = NULL, shipment_status_code = 'READY_FOR_DISPATCH', updated_at = NOW()
+      WHERE id = $1
+    `, [shipmentId]);
+
+    // 4. Sejarah Status
+    await client.query(`
+      INSERT INTO shipment_status_history (shipment_id, from_status_code, to_status_code, changed_source, change_notes)
+      VALUES ($1, $2, 'READY_FOR_DISPATCH', 'BATCH_MODULE', 'Dicabut dari manifest kapal / batal muat')
+    `, [shipmentId, oldStatus]);
+
+    // 5. Rekam ke Audit Log
+    const jsonChanges = JSON.stringify({
+       "batch_id": { "old": batchId, "new": null },
+       "shipment_status_code": { "old": oldStatus, "new": "READY_FOR_DISPATCH" }
+    });
+
+    await client.query(`
+      INSERT INTO system_audit_logs (
+        entity_name, entity_id, action_type, changes_json,
+        source_module, source_action, revision_note, revised_by, related_shipment_id
+      ) VALUES (
+        $1, $2, $3, $4, 
+        $5, $6, $7, $8, $9
+      )
+    `, [
+       'CUSTOMER_SHIPMENT', shipmentId, 'DETACH_FROM_BATCH', jsonChanges,
+       'BATCH_MODULE', 'removeShipmentFromBatch', revisionNote, 'Admin Manifest Sesi', shipmentId
+    ]);
+
+    await client.query('COMMIT');
+
+    revalidatePath('/batches');
+    revalidatePath(`/batches/${batchId}`);
+    return { success: true };
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    console.error('Batch Detachment Error:', err);
+    return { success: false, message: err.message || 'Gagal mengeluarkan karung dari Kapal.' };
   } finally {
     client.release();
   }

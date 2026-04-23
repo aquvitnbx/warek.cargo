@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { submitRepack } from '@/app/repacking/actions';
+import { submitRepack, cancelConsolidation } from '@/app/repacking/actions';
 
 interface RepackingFormProps {
   shipmentId: string;
@@ -30,6 +30,29 @@ export default function RepackingForm({ shipmentId, shipment, packages }: Repack
        }
      } catch (err: any) {
         setFeedback({ type: 'error', msg: err.message || 'Terjadi kesalahan internal' });
+        setIsPending(false);
+     }
+  };
+
+  const handleCancelClick = async () => {
+     if (!confirm('AWAS: Anda akan merusak keranjang Konsolidasi ini. Karung akan ditandai CANCELLED dan SEMUA paket di dalamnya akan dimuntahkan kembali ke status Gudang (RECEIVED_AT_HUB). Lanjutkan?')) return;
+     
+     const reason = prompt('Masukkan alasan kuat kenapa karung ini dibongkar (Wajib untuk Audit):');
+     if (!reason || reason.trim().length < 4) return alert('Alasan dibatalkan: Alasan kurang jelas.');
+
+     setIsPending(true);
+     setFeedback(null);
+
+     try {
+       const res = await cancelConsolidation(shipmentId, reason.trim());
+       if (res.success) {
+          window.location.href = '/repacking';
+       } else {
+          setFeedback({ type: 'error', msg: res.message });
+          setIsPending(false);
+       }
+     } catch (err: any) {
+        setFeedback({ type: 'error', msg: err.message || 'Gagal membatalkan' });
         setIsPending(false);
      }
   };
@@ -141,6 +164,17 @@ export default function RepackingForm({ shipmentId, shipment, packages }: Repack
           >
              {isPending ? 'MENYIMPAN...' : shipment.shipment_status_code === 'READY_FOR_DISPATCH' ? 'KOREKSI & CATAT LOG' : 'FINALISASI & SEGEL'}
           </button>
+
+          {['AWAITING_PACKAGES', 'DRAFT'].includes(shipment.shipment_status_code) && (
+             <button
+                type="button"
+                onClick={handleCancelClick}
+                disabled={isPending}
+                className="w-full mt-3 py-3 border-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-400 font-bold tracking-widest rounded-xl transition-all text-xs"
+             >
+                BONGKAR KARUNG INI
+             </button>
+          )}
        </div>
     </form>
   )

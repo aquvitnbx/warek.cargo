@@ -37,8 +37,8 @@ export default function RootLayout({
             <Link href="/packages" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">📋</span> Data Manifest
             </Link>
-            <Link href="/batches" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
-              <span className="text-xl">🚢</span> Jadwal Kapal
+            <Link href="/manifests" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
+              <span className="text-xl">🚢</span> Jadwal Kapal & Manifest
             </Link>
             <Link href="/customers" className="px-5 py-4 rounded-xl hover:bg-blue-800 transition-colors text-blue-100 hover:text-white font-semibold flex items-center gap-4">
               <span className="text-xl">👥</span> Pelanggan
@@ -90,7 +90,7 @@ export default function RootLayout({
           <Link href="/packages" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12">
             <span className="text-2xl mb-1">📋</span> Data
           </Link>
-          <Link href="/batches" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12">
+          <Link href="/manifests" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12">
             <span className="text-2xl mb-1">🚢</span> Kapal
           </Link>
           <Link href="/customers" className="flex flex-col items-center p-2 pt-3 hover:text-blue-600 transition-colors w-12 text-center text-[9px]">

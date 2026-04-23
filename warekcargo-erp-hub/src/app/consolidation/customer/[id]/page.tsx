@@ -27,7 +27,7 @@ export default async function CustomerConsolidationPage({ params }: { params: Pr
           LEFT JOIN shipment_packages sp ON p.id = sp.inbound_package_id
           WHERE p.customer_id = $1 
             AND sp.shipment_id IS NULL
-            AND p.package_status_code NOT IN ('DELIVERED', 'COMPLETED')
+            AND p.package_status_code IN ('RECEIVED_AT_HUB', 'REPACKING')
           ORDER BY p.received_at ASC
        `;
        const resPkg = await pool.query(queryPkg, [customerId]);

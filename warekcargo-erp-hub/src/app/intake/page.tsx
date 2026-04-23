@@ -22,11 +22,11 @@ export default async function IntakePage() {
     customers = customersQuery.rows;
 
     const recentQuery = await pool.query(`
-      SELECT p.tracking_number, p.received_at, p.package_status_code, h.code as hub_code, p.item_description
+      SELECT p.tracking_number, p.received_at, p.customer_declared_at, p.package_status_code, h.code as hub_code, p.item_description, p.created_at
       FROM inbound_packages p
       LEFT JOIN hubs h ON p.hub_id = h.id
-      ORDER BY p.received_at DESC
-      LIMIT 5
+      ORDER BY COALESCE(p.received_at, p.customer_declared_at, p.created_at) DESC
+      LIMIT 10
     `);
     recentPackages = recentQuery.rows;
   } catch(e: any) {
@@ -94,14 +94,16 @@ export default async function IntakePage() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
            </h3>
 
-           <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden relative">
+            <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden relative">
               {recentPackages.length > 0 ? (
                  <div className="divide-y divide-slate-50/80">
-                    {recentPackages.map((act: any) => (
-                       <div key={act.tracking_number} className="p-5 hover:bg-slate-50/50 transition-colors flex flex-col gap-2.5 group">
+                    {recentPackages.map((act: any) => {
+                       const isPreManifest = act.package_status_code === 'AWAITING_HUB_RECEIPT';
+                       return (
+                       <div key={act.tracking_number} className={`p-5 hover:bg-slate-50/50 transition-colors flex flex-col gap-2.5 group ${isPreManifest ? 'bg-indigo-50/20' : ''}`}>
                           <div className="flex justify-between items-start">
                             <div className="flex flex-col">
-                               <span className="font-mono font-black text-sm text-slate-800 group-hover:text-blue-600 transition-colors uppercase tracking-wider">{act.tracking_number}</span>
+                               <Link href={`/intake/${act.tracking_number}`} className="font-mono font-black text-sm text-slate-800 hover:text-blue-600 transition-colors uppercase tracking-wider underline decoration-slate-200 underline-offset-4">{act.tracking_number}</Link>
                                <span className="text-[11px] font-bold text-slate-400 mt-0.5">{act.item_description || 'Tanpa deskripsi'}</span>
                             </div>
                             <span className="text-[9px] font-black px-2 py-0.5 bg-slate-100 text-slate-500 rounded tracking-widest uppercase">
@@ -111,23 +113,25 @@ export default async function IntakePage() {
                           
                           <div className="flex justify-between items-center mt-1">
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-widest flex items-center gap-1.5 ${
+                               isPreManifest ? 'text-indigo-700 bg-indigo-50 border-indigo-100' :
                                act.package_status_code === 'DAMAGED' ? 'text-red-700 bg-red-50 border-red-100' : 
                                act.package_status_code === 'UNIDENTIFIED' ? 'text-amber-700 bg-amber-50 border-amber-100' :
                                'text-emerald-700 bg-emerald-50 border-emerald-100'
                             }`}>
                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  isPreManifest ? 'bg-indigo-500 animate-pulse' :
                                   act.package_status_code === 'DAMAGED' ? 'bg-red-500' : 
                                   act.package_status_code === 'UNIDENTIFIED' ? 'bg-amber-500' :
                                   'bg-emerald-500'
                                }`}></span> 
-                               {act.package_status_code?.replace(/_/g, ' ')}
+                               {isPreManifest ? 'PRE-MANIFEST' : act.package_status_code?.replace(/_/g, ' ')}
                             </span>
-                            <span className="text-[11px] text-slate-400 font-bold">
-                               {new Date(act.received_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            <span className="text-[11px] text-slate-400 font-bold flex flex-col items-end">
+                               {isPreManifest ? 'WA:' : ''} {new Date(isPreManifest ? (act.customer_declared_at || act.created_at) : act.received_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                        </div>
-                    ))}
+                    )})}
                  </div>
               ) : (
                  <div className="p-10 text-center flex flex-col items-center justify-center space-y-4">

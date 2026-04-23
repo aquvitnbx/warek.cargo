@@ -21,11 +21,11 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
      if (customer) {
        // Fetch Packages that belong to this customer
        const resPkg = await pool.query(`
-          SELECT p.id, p.tracking_number, p.received_at, p.package_status_code, p.item_description, p.quantity, h.code as hub_code
+          SELECT p.id, p.tracking_number, p.received_at, p.customer_declared_at, p.created_at, p.package_status_code, p.item_description, p.quantity, h.code as hub_code
           FROM inbound_packages p
           LEFT JOIN hubs h ON p.hub_id = h.id
           WHERE p.customer_id = $1
-          ORDER BY p.received_at DESC
+          ORDER BY COALESCE(p.received_at, p.customer_declared_at, p.created_at) DESC
        `, [customerId]);
        packages = resPkg.rows;
      }
@@ -144,7 +144,8 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
                            <td className="px-6 py-4">
                               <div className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px] inline-block mb-1">{pkg.hub_code}</div>
                               <div className="text-xs font-medium text-slate-400">
-                                 {pkg.received_at ? new Date(pkg.received_at).toLocaleDateString('id-ID') : '-'}
+                                 {new Date(pkg.received_at || pkg.customer_declared_at || pkg.created_at).toLocaleDateString('id-ID')}
+                                 {!pkg.received_at && <span className="block text-[9px] text-indigo-400 font-bold uppercase mt-0.5">Pre-Manifest</span>}
                               </div>
                            </td>
                            <td className="px-6 py-4">

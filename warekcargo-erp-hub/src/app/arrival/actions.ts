@@ -2,6 +2,7 @@
 
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { processShipmentNotification } from '@/lib/notifications';
 
 export async function processBatchArrival(formData: FormData) {
   const batchId = formData.get('batch_id') as string;
@@ -61,6 +62,11 @@ export async function processBatchArrival(formData: FormData) {
       // Remove trailing comma
       historyQuery = historyQuery.slice(0, -1);
       await client.query(historyQuery, histVals);
+
+      // 6. Trigger Notifications for ARRIVED_DESTINATION
+      for (const shipmentId of shipmentIds) {
+         await processShipmentNotification(shipmentId, 'ARRIVED_DESTINATION', client);
+      }
     }
 
     await client.query('COMMIT');

@@ -19,7 +19,7 @@ export default async function ConsolidationDashboard() {
       JOIN customers c ON p.customer_id = c.id
       LEFT JOIN shipment_packages sp ON p.id = sp.inbound_package_id
       WHERE sp.shipment_id IS NULL
-        AND p.package_status_code NOT IN ('DELIVERED', 'COMPLETED')
+        AND p.package_status_code IN ('RECEIVED_AT_HUB', 'REPACKING')
       GROUP BY c.id
       ORDER BY pending_packages DESC
     `;

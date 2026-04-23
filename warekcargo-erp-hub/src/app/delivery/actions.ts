@@ -2,6 +2,7 @@
 
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { processShipmentNotification } from '@/lib/notifications';
 
 export async function updateDeliveryStatus(formData: FormData) {
   const shipmentId = formData.get('shipment_id') as string;
@@ -75,6 +76,11 @@ export async function updateDeliveryStatus(formData: FormData) {
         shipment_id, from_status_code, to_status_code, changed_by, changed_source, change_notes
       ) VALUES ($1, $2, $3, 'Admin Delivery', 'Delivery Dashboard', $4)
     `, [shipmentId, currentShipmentStatus, nextShipmentStatus, historyNotes]);
+
+    // 5. Trigger notifications for COMPLETED status
+    if (nextShipmentStatus === 'COMPLETED' && currentShipmentStatus !== 'COMPLETED') {
+       await processShipmentNotification(shipmentId, 'COMPLETED', client);
+    }
 
     await client.query('COMMIT');
     

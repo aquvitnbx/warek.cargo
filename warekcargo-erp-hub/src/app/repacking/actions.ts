@@ -27,7 +27,7 @@ export async function submitRepack(formData: FormData) {
     const oldVolume = resPrev.rows[0].total_volume_m3;
 
     // 🔴 HARD LOCK MUTLAK: Tidak boleh diedit fisik dimensinya jika kapal sudah berangkat (DISPATCHED) atau lebih jauh (ARRIVED dll)
-    const lockedStatuses = ['DISPATCHED', 'ARRIVED_DESTINATION', 'READY_FOR_PICKUP', 'DELIVERED'];
+    const lockedStatuses = ['DISPATCHED', 'ARRIVED_DESTINATION', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED'];
     if (lockedStatuses.includes(fromStatus) && oldWeight !== null) {
        throw new Error(`Sistem terkunci (HARD LOCK). Karung berstatus [${fromStatus}] tidak boleh dikoreksi dimensi fisiknya.`);
     }
@@ -60,8 +60,7 @@ export async function submitRepack(formData: FormData) {
        // Ini adalah Koreksi Dimensi (Edit) - Merekam jejak ke Audit Log
        const jsonChanges = JSON.stringify({
           "total_weight_kg": { "old": oldWeight, "new": totalWeightKg },
-          "total_volume_m3": { "old": oldVolume, "new": totalVolumeM3 },
-          "notes": { "old": resPrev.rows[0].notes, "new": notes }
+          "total_volume_m3": { "old": oldVolume, "new": totalVolumeM3 }
        });
 
        await client.query(`
@@ -93,3 +92,83 @@ export async function submitRepack(formData: FormData) {
     client.release();
   }
 }
+
+export async function cancelConsolidation(shipmentId: string, reason: string) {
+  if (!shipmentId || !reason) return { success: false, message: 'Data tidak valid atau alasan kosong.' };
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Cek Status Mutlak (HANYA Boleh AWAITING_PACKAGES atau DRAFT)
+    const resPrev = await client.query('SELECT shipment_code, shipment_status_code FROM customer_shipments WHERE id = $1 FOR UPDATE', [shipmentId]);
+    if (resPrev.rows.length === 0) throw new Error("Shipment tidak ditemukan di database.");
+    
+    const { shipment_status_code: fromStatus, shipment_code: shipmentCode } = resPrev.rows[0];
+
+    if (!['AWAITING_PACKAGES', 'DRAFT'].includes(fromStatus)) {
+       throw new Error(`Bongkar Karung Ditolak: Karung berstatus [${fromStatus}] sudah masuk logistik dan tidak boleh dibongkar ulang.`);
+    }
+
+    // 2. Set Karung Menjadi CANCELLED
+    await client.query(`
+      UPDATE customer_shipments 
+      SET shipment_status_code = 'CANCELLED', notes = CONCAT(notes, ' | BONGKAR KARUNG: ', $2::text), updated_at = NOW()
+      WHERE id = $1
+    `, [shipmentId, reason]);
+
+    // 3. Rekam History Shipment
+    await client.query(`
+      INSERT INTO shipment_status_history (shipment_id, from_status_code, to_status_code, changed_source, change_notes)
+      VALUES ($1, $2, 'CANCELLED', 'REPACKING_MODULE', 'Karung dibongkar dan digagalkan by Admin')
+    `, [shipmentId, fromStatus]);
+
+    // 4. Detach Packages dan Kembalikan ke Hub
+    const pkgRes = await client.query(`SELECT inbound_package_id FROM shipment_packages WHERE shipment_id = $1`, [shipmentId]);
+    const pkgIds = pkgRes.rows.map(r => r.inbound_package_id);
+
+    if (pkgIds.length > 0) {
+       // Putus relasi (Detach)
+       await client.query(`DELETE FROM shipment_packages WHERE shipment_id = $1`, [shipmentId]);
+       
+       // Tulis riwayat bahwa paket-paket ini terpental balik ke HUB murni
+       for (const pid of pkgIds) {
+          // Walau statusnya di DB tidak pernah berubah dari RECEIVED_AT_HUB, kita rekam historis agar QC tahu paket ini pernah gagal berangkat
+          await client.query(`
+             INSERT INTO inbound_package_status_history (inbound_package_id, from_status_code, to_status_code, changed_source, change_notes) 
+             VALUES ($1, 'RECEIVED_AT_HUB', 'RECEIVED_AT_HUB', 'REPACKING_MODULE', 'Paket dilepas dari Karung ' || $2::text || ' karena pembongkaran.')
+          `, [pid, shipmentCode]);
+       }
+    }
+
+    // 5. Audit Log Inti
+    await client.query(`
+      INSERT INTO system_audit_logs (
+        entity_name, entity_id, action_type, changes_json,
+        source_module, source_action, revision_note, revised_by, related_shipment_id
+      ) VALUES (
+        $1, $2, $3, $4, 
+        $5, $6, $7, $8, $9
+      )
+    `, [
+       'CUSTOMER_SHIPMENT', shipmentId, 'BONGKAR_KARUNG_KONSOLIDASI', JSON.stringify({ detached_packages_count: pkgIds.length, reason }),
+       'REPACKING_MODULE', 'cancelConsolidation', reason, 'Admin Logistik Sesi', shipmentId
+    ]);
+
+    await client.query('COMMIT');
+
+    revalidatePath('/repacking');
+    revalidatePath(`/repacking/${shipmentId}`);
+    
+    return { success: true, message: `Berhasil merusak dan membongkar karung ${shipmentCode}.` };
+
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    console.error('Bongkar Error:', err);
+    return { success: false, message: err.message || 'Gagal membatalkan spesifikasi karung.' };
+  } finally {
+    client.release();
+  }
+}
+

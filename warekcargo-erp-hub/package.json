@@ -10,13 +10,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.53",
     "@aws-sdk/client-s3": "^3.540.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
+    "ai": "^6.0.168",
     "next": "16.2.4",
     "pg": "^8.11.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

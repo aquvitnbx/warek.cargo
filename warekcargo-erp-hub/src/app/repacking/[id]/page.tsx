@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import Link from 'next/link';
 import RepackingForm from '@/components/RepackingForm';
 import PrintButton from '@/components/PrintButton';
+import AssignManifestButton from '@/components/manifests/AssignManifestButton';
 
 export const revalidate = 0;
 
@@ -11,6 +12,8 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
   
   let shipment: any = null;
   let packages: any[] = [];
+  let availableBatches: any[] = [];
+  let availableContainers: any[] = [];
   let dbError = null;
 
   try {
@@ -37,6 +40,12 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
        `;
        const resPkg = await pool.query(queryPkg, [shipmentId]);
        packages = resPkg.rows;
+       
+       // Fetch available batches & containers for Manifest assignment
+       const resBatches = await pool.query(`SELECT id, batch_code, vessel_name, voyage_number FROM shipping_batches WHERE batch_status_code = 'OPEN'`);
+       availableBatches = resBatches.rows;
+       const resContainers = await pool.query(`SELECT id, batch_id, container_number, container_type, destination_city FROM batch_containers`);
+       availableContainers = resContainers.rows;
      }
   } catch (err: any) {
      dbError = err.message || "Gagal terkoneksi ke Database.";
@@ -96,12 +105,38 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
        )}
 
        {!dbError && (
-          <div className="print:hidden">
+          <div className="print:hidden space-y-6">
             <RepackingForm 
                shipmentId={shipmentId}
                shipment={shipment}
                packages={packages} 
             />
+
+            {/* MANIFEST ASSIGNMENT BLOCK */}
+            {(shipment?.shipment_status_code === 'READY_FOR_DISPATCH' || shipment?.shipment_status_code === 'MANIFESTED') && (
+               <div className="bg-slate-800 rounded-2xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden group">
+                  <div className="absolute right-0 top-0 opacity-10 group-hover:opacity-20 transition-opacity translate-x-1/4 -translate-y-1/4">
+                     <span className="text-[120px]">🚢</span>
+                  </div>
+                  
+                  <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
+                     <div className="flex-1">
+                        <span className="text-yellow-400 font-black tracking-widest text-xs uppercase mb-2 block">Tujuan Pelabuhan Tujuan</span>
+                        <h3 className="text-2xl font-black mb-1">Assign ke Armada Muatan</h3>
+                        <p className="text-slate-300 text-sm">Karung sudah dikunci (READY_FOR_DISPATCH). Pilih jadwal pelayaran dan nomor boks muatan / peti kemas untuk manifest karung ini.</p>
+                     </div>
+                     <div className="w-full md:w-auto">
+                        <AssignManifestButton 
+                           shipmentId={shipmentId} 
+                           batches={availableBatches} 
+                           containers={availableContainers} 
+                           currentBatchContainerId={shipment?.batch_container_id}
+                           shipmentDestinationCity={shipment?.destination_city}
+                        />
+                     </div>
+                  </div>
+               </div>
+            )}
           </div>
        )}
 

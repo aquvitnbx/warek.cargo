@@ -17,18 +17,6 @@ export async function createConsolidation(formData: FormData, selectedPackageIds
   try {
     await client.query('BEGIN');
 
-    // 0. HARD VALIDATION: Doctrine Whitelist Eligibility
-    const pkgCheckQuery = await client.query(`
-       SELECT id, tracking_number, package_status_code 
-       FROM inbound_packages 
-       WHERE id = ANY($1) 
-         AND package_status_code NOT IN ('RECEIVED_AT_HUB', 'REPACKING')
-    `, [selectedPackageIds]);
-    
-    if (pkgCheckQuery.rows.length > 0) {
-       throw new Error(`Terdapat ${pkgCheckQuery.rows.length} paket yang belum diterima fisik di hub atau tidak layak dikonsolidasikan. Anda hanya dapat memproses paket yang berstatus fisik valid.`);
-    }
-
     // 1. Generate unique shipment_code
     // Format: SHP-YYYYMMDD-RandomHex
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -66,9 +54,10 @@ export async function createConsolidation(formData: FormData, selectedPackageIds
        // Namun standard `ref_package_statuses` saat ini: RECEIVED_AT_HUB, DAMAGED, UNIDENTIFIED
        // Untuk patuh pada Doctrine secara kaku, kita tidak mengubah isi string hardcode liar
        // Biarkan status tetap RECEIVED_AT_HUB tapi karena sudah ditautkan ke shipment, kita taruh history bahwa ia digabung
+       
        await client.query(
          `INSERT INTO inbound_package_status_history (inbound_package_id, to_status_code, changed_source, change_notes) 
-          VALUES ($1, 'RECEIVED_AT_HUB', 'CONSOLIDATION_MODULE', 'Tergabung ke shipment karung raksasa: ' || $2)`,
+          VALUES ($1, 'RECEIVED_AT_HUB', 'CONSOLIDATION_MODULE', 'Tergabung ke shipment: ' || $2)`,
          [pkgId, shipmentCode]
        );
     }

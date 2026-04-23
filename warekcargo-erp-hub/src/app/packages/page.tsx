@@ -1,4 +1,5 @@
 import pool from '@/lib/db';
+import Link from 'next/link';
 
 export const revalidate = 0;
 
@@ -8,10 +9,10 @@ export default async function PackagesList() {
   
   try {
      const res = await pool.query(`
-        SELECT p.tracking_number, p.received_at, p.package_status_code, h.code as hub_code, p.item_description
+        SELECT p.tracking_number, p.received_at, p.customer_declared_at, p.package_status_code, h.code as hub_code, p.item_description, p.created_at
         FROM inbound_packages p
         LEFT JOIN hubs h ON p.hub_id = h.id
-        ORDER BY p.received_at DESC
+        ORDER BY COALESCE(p.received_at, p.customer_declared_at, p.created_at) DESC
         LIMIT 50
      `);
      packages = res.rows;
@@ -52,6 +53,7 @@ export default async function PackagesList() {
                    <th className="p-5 font-bold tracking-widest uppercase">Timestamp</th>
                    <th className="p-5 font-bold tracking-widest uppercase">Status Operasi Induk</th>
                    <th className="p-5 font-bold tracking-widest uppercase">Keterangan Administrasi</th>
+                   <th className="p-5 font-bold tracking-widest uppercase text-right">Aksi</th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -63,8 +65,11 @@ export default async function PackagesList() {
                          {pkg.hub_code}
                        </span>
                     </td>
-                    <td className="p-5 text-slate-600 font-medium">
-                       {new Date(pkg.received_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    <td className="p-5 text-slate-600 font-medium whitespace-nowrap">
+                       <div className="flex flex-col">
+                          <span>{new Date(pkg.received_at || pkg.customer_declared_at || pkg.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                          {!pkg.received_at && <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-0.5">Pre-Manifest</span>}
+                       </div>
                     </td>
                     <td className="p-5">
                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-bold border border-emerald-200">
@@ -74,12 +79,20 @@ export default async function PackagesList() {
                     <td className="p-5 text-slate-500 truncate max-w-[200px] font-medium">
                        {pkg.item_description || '-'}
                     </td>
+                    <td className="p-5 text-right">
+                       <Link href={`/packages/${pkg.tracking_number}/edit`} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-500 text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Revisi
+                       </Link>
+                    </td>
                   </tr>
                 ))}
                 
                 {packages.length === 0 && (
                   <tr>
-                     <td colSpan={5} className="p-16 text-center">
+                     <td colSpan={6} className="p-16 text-center">
                         <div className="flex flex-col items-center gap-3">
                           <span className="text-4xl opacity-50 grayscale">📭</span>
                           <span className="text-slate-500 font-bold tracking-widest uppercase text-xs">Aman. Belum ada entri paket hari ini.</span>
