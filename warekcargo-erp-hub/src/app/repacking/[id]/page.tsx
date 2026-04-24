@@ -4,17 +4,54 @@ import RepackingForm from '@/components/RepackingForm';
 import PrintButton from '@/components/PrintButton';
 import AssignManifestButton from '@/components/manifests/AssignManifestButton';
 
+type RepackingShipmentDetail = {
+  id: string;
+  shipment_code: string;
+  shipment_status_code: string;
+  full_name: string;
+  customer_code: string | null;
+  whatsapp_number: string | null;
+  destination_city: string | null;
+  total_weight_kg: number | null;
+  total_volume_m3: number | null;
+  batch_container_id: string | null;
+};
+
+type RepackingPackageRow = {
+  id: string;
+  tracking_number: string;
+  received_at: string | Date | null;
+  item_description: string | null;
+  quantity: number | null;
+  hub_code: string | null;
+};
+
+type BatchOption = {
+  id: string;
+  batch_code: string;
+  vessel_name: string | null;
+  voyage_number: string | null;
+};
+
+type ContainerOption = {
+  id: string;
+  batch_id: string;
+  container_number: string;
+  container_type: string | null;
+  destination_city: string | null;
+};
+
 export const revalidate = 0;
 
 export default async function RepackingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const shipmentId = resolvedParams.id;
   
-  let shipment: any = null;
-  let packages: any[] = [];
-  let availableBatches: any[] = [];
-  let availableContainers: any[] = [];
-  let dbError = null;
+  let shipment: RepackingShipmentDetail | null = null;
+  let packages: RepackingPackageRow[] = [];
+  let availableBatches: BatchOption[] = [];
+  let availableContainers: ContainerOption[] = [];
+  let dbError: string | null = null;
 
   try {
      // Fetch Shipment & Customer details
@@ -47,8 +84,8 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
        const resContainers = await pool.query(`SELECT id, batch_id, container_number, container_type, destination_city FROM batch_containers`);
        availableContainers = resContainers.rows;
      }
-  } catch (err: any) {
-     dbError = err.message || "Gagal terkoneksi ke Database.";
+  } catch (err: unknown) {
+     dbError = err instanceof Error ? err.message : 'Gagal terkoneksi ke Database.';
   }
 
   if (!shipment && !dbError) {
@@ -74,7 +111,7 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
             <h2 className="text-3xl md:text-3xl font-black tracking-tight text-slate-800 flex items-center gap-3">
                Finalisasi & Timbang Karung
             </h2>
-            {shipment?.shipment_status_code !== 'PENDING' && shipment?.shipment_status_code !== 'RECEIVED_AT_HUB' && (
+            {!['DRAFT', 'AWAITING_PACKAGES'].includes(shipment?.shipment_status_code || '') && (
                <PrintButton />
             )}
           </div>
@@ -130,8 +167,8 @@ export default async function RepackingDetailPage({ params }: { params: Promise<
                            shipmentId={shipmentId} 
                            batches={availableBatches} 
                            containers={availableContainers} 
-                           currentBatchContainerId={shipment?.batch_container_id}
-                           shipmentDestinationCity={shipment?.destination_city}
+                           currentBatchContainerId={shipment?.batch_container_id ?? undefined}
+                           shipmentDestinationCity={shipment?.destination_city ?? undefined}
                         />
                      </div>
                   </div>

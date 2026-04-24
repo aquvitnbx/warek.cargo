@@ -4,10 +4,30 @@ import BatchStatusButtons from '@/components/manifests/BatchStatusButtons';
 
 export const revalidate = 0;
 
-export default async function BatchDetailPage({ params }: { params: { id: string } }) {
+type BatchManifestDetail = {
+   id: string;
+   batch_code: string;
+   batch_status_code: string;
+   vessel_name: string;
+   voyage_number: string | null;
+   hub_code: string | null;
+   destination_city: string | null;
+   etd_at: string | Date;
+};
+
+type BatchContainerRow = {
+   id: string;
+   container_number: string;
+   container_type: string;
+   max_weight_kg: number | null;
+   shipment_count: number;
+   total_weight_kg: number | null;
+};
+
+export default async function BatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
    const { id } = await params;
-   let batch = null;
-   let shipments = [];
+   let batch: BatchManifestDetail | null = null;
+   let shipments: BatchContainerRow[] = [];
    
    try {
        const res = await pool.query(`
@@ -45,7 +65,7 @@ export default async function BatchDetailPage({ params }: { params: { id: string
    }
 
    const isOpen = batch.batch_status_code === 'OPEN';
-   const totalWeight = shipments.reduce((sum, s) => sum + (Number(s.total_weight_kg) || 0), 0);
+   const totalWeight = shipments.reduce((sum: number, s: BatchContainerRow) => sum + (Number(s.total_weight_kg) || 0), 0);
 
    return (
       <div className="max-w-5xl mx-auto space-y-6 pt-4 animate-in fade-in pb-12 overflow-x-hidden">
@@ -98,7 +118,7 @@ export default async function BatchDetailPage({ params }: { params: { id: string
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-slate-50/50">
-               {shipments.map((c: any) => (
+               {shipments.map((c) => (
                   <Link href={`/manifests/${id}/container/${c.id}`} key={c.id} className="block hover:-translate-y-1 transition-transform">
                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3 hover:border-blue-300 hover:shadow-md cursor-pointer group">
                         <div className="flex justify-between items-start">

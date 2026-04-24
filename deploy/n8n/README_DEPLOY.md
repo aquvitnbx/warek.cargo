@@ -1,5 +1,29 @@
 # Deploy n8n untuk WarekCargo
 
+## Status Runtime Saat Ini
+Arah runtime terbaru WarekCargo **bukan lagi Nala-centric**.
+
+Gunakan acuan berikut untuk integrasi baru:
+- endpoint app internal: `/api/v1/internal/*`
+- header auth internal: `x-internal-api-key`
+- secret app internal: `INTERNAL_AUTOMATION_SECRET`
+- webhook notifikasi outbound generic: `notifications-outbound`
+- workflow canonical baru:
+  - `warekcargo_inbound_canonical_v1.json`
+  - `warekcargo_notifications_outbound_v1.json`
+  - `WAREKCARGO_CANONICAL_WORKFLOWS.md`
+  - `WAREKCARGO_E2E_SMOKE_TEST.md`
+- workflow canonical terbaru sudah membawa guardrail timeout, fallback aman, dan jalur `SKIPPED` untuk outbound invalid
+- untuk smoke test lokal, arahkan `WA_GATEWAY_SEND_URL` ke `deploy/n8n/mock_wa_gateway.mjs`
+
+Hindari menjadikan artefak lama berbasis:
+- `/api/v1/nala/*`
+- `x-nala-api-key`
+- `NALA_API_SECRET`
+- `nala-outbound`
+
+Artefak lama boleh dipakai hanya sebagai bahan baca historis, **bukan** blueprint deploy baru.
+
 ## 1. Install Docker dan Docker Compose plugin
 Di VPS Ubuntu:
 

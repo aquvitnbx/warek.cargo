@@ -78,6 +78,24 @@ export async function updateBatchStatus(batchId: string, newStatus: string, reas
            `, [s.id]);
         }
      }
+     
+     // 🔴 REVERSAL: Jika jadwal kapal dibatalkan mutlak, bongkar wujud Karung dari kontainer/kapal!
+     if (newStatus === 'CANCELLED') {
+        const shipmentsRes = await client.query('SELECT id, shipment_code FROM customer_shipments WHERE batch_id = $1', [batchId]);
+        for (const s of shipmentsRes.rows) {
+           await client.query(`
+              UPDATE customer_shipments 
+              SET shipment_status_code = 'READY_FOR_DISPATCH', 
+                  batch_id = NULL, 
+                  batch_container_id = NULL 
+              WHERE id = $1
+           `, [s.id]);
+           await client.query(`
+              INSERT INTO shipment_status_history (shipment_id, from_status_code, to_status_code, changed_source, change_notes)
+              VALUES ($1, 'MANIFESTED', 'READY_FOR_DISPATCH', 'MANIFEST_MODULE', 'Armada dibatalkan. Resi diturunkan kembali menunggu alokasi transport baru.')
+           `, [s.id]);
+        }
+     }
 
      await client.query('COMMIT');
      revalidatePath('/manifests');
@@ -145,6 +163,63 @@ export async function assignShipmentToManifest(shipmentId: string, batchId: stri
   } catch (err: any) {
      await client.query('ROLLBACK');
      return { success: false, message: err.message };
+  } finally {
+     client.release();
+  }
+}
+
+export async function removeShipmentFromContainer(formData: FormData) {
+  const shipmentId = formData.get('shipment_id') as string;
+  const containerId = formData.get('container_id') as string; 
+  const batchId = formData.get('batch_id') as string;
+
+  if (!shipmentId) return { success: false, message: 'ID Karung tidak valid.' };
+
+  const client = await pool.connect();
+  try {
+     await client.query('BEGIN');
+     
+     // Validasi apakah jadwal sudah jalan
+     const sRes = await client.query(`
+       SELECT c.shipment_status_code, b.batch_status_code 
+       FROM customer_shipments c 
+       LEFT JOIN shipping_batches b ON c.batch_id = b.id 
+       WHERE c.id = $1
+     `, [shipmentId]);
+     
+     if (sRes.rows.length === 0) throw new Error('Karung tidak ditemukan.');
+     const { batch_status_code } = sRes.rows[0];
+
+     if (batch_status_code === 'DEPARTED') {
+        throw new Error('Tidak dapat mencabut karung. Kapal sudah berangkat (DEPARTED).');
+     }
+
+     const updateQuery = `
+        UPDATE customer_shipments 
+        SET batch_id = NULL, 
+            batch_container_id = NULL, 
+            shipment_status_code = 'READY_FOR_DISPATCH',
+            updated_at = NOW()
+        WHERE id = $1
+     `;
+     await client.query(updateQuery, [shipmentId]);
+
+     await client.query(`
+        INSERT INTO shipment_status_history (shipment_id, from_status_code, to_status_code, changed_source, change_notes)
+        VALUES ($1, 'MANIFESTED', 'READY_FOR_DISPATCH', 'MANIFEST_MODULE', 'Karung di-detach/dikeluarkan manual secara spesifik dari kontainer.')
+     `, [shipmentId]);
+
+     await client.query('COMMIT');
+     
+     if (batchId && containerId) {
+       revalidatePath(`/manifests/${batchId}/container/${containerId}`);
+     }
+     
+     return { success: true };
+  } catch (err: any) {
+     await client.query('ROLLBACK');
+     console.error('Detach Error:', err);
+     return { success: false, message: err.message || 'Gagal melepas karung.' };
   } finally {
      client.release();
   }

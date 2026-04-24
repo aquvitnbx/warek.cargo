@@ -17,16 +17,19 @@ export async function createConsolidation(formData: FormData, selectedPackageIds
   try {
     await client.query('BEGIN');
 
-    // 0. HARD VALIDATION: Doctrine Whitelist Eligibility
+    // 0. HARD VALIDATION: Doctrine Whitelist Eligibility + Double Assignment Prevention
     const pkgCheckQuery = await client.query(`
        SELECT id, tracking_number, package_status_code 
-       FROM inbound_packages 
+       FROM inbound_packages p
        WHERE id = ANY($1) 
-         AND package_status_code NOT IN ('RECEIVED_AT_HUB', 'REPACKING')
+         AND (
+           package_status_code NOT IN ('RECEIVED_AT_HUB', 'REPACKING')
+           OR EXISTS (SELECT 1 FROM shipment_packages sp WHERE sp.inbound_package_id = p.id)
+         )
     `, [selectedPackageIds]);
     
     if (pkgCheckQuery.rows.length > 0) {
-       throw new Error(`Terdapat ${pkgCheckQuery.rows.length} paket yang belum diterima fisik di hub atau tidak layak dikonsolidasikan. Anda hanya dapat memproses paket yang berstatus fisik valid.`);
+       throw new Error(`Terdapat ${pkgCheckQuery.rows.length} resi yang tertolak. Penyebab: 1) Status fisik belum diterima di Hub, ATAU 2) Paket sudah terlanjur dimasukkan ke dalam Karung lain (Race Condition).`);
     }
 
     // 1. Generate unique shipment_code
@@ -84,6 +87,80 @@ export async function createConsolidation(formData: FormData, selectedPackageIds
     await client.query('ROLLBACK');
     console.error('Consolidation Error:', err);
     return { success: false, message: err.message || 'Gagal menyimpan transaksi.' };
+  } finally {
+    client.release();
+  }
+}
+
+export async function cancelInboundPackage(formData: FormData) {
+  const packageId = formData.get('package_id') as string;
+  const reasonCategory = formData.get('reason_category') as string;
+  const reasonText = formData.get('reason_text') as string;
+
+  if (!packageId || !reasonCategory) {
+    return { success: false, message: 'ID Paket atau Kategori Alasan Batal tidak valid.' };
+  }
+
+  const fullReason = `[${reasonCategory}] ${reasonText}`;
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Cek Paket, pastikan dia belum masuk shipment_packages
+    const resPrev = await client.query(`
+      SELECT p.package_status_code, p.tracking_number, 
+             EXISTS(SELECT 1 FROM shipment_packages sp WHERE sp.inbound_package_id = p.id) as is_assigned
+      FROM inbound_packages p 
+      WHERE p.id = $1 FOR UPDATE
+    `, [packageId]);
+
+    if (resPrev.rows.length === 0) throw new Error("Paket tidak ditemukan.");
+    
+    const { package_status_code: fromStatus, tracking_number: trackingNumber, is_assigned } = resPrev.rows[0];
+
+    if (is_assigned) {
+      throw new Error("Penolakan Mutlak: Paket ini telanjur terjahit di dalam Karung. Silakan Bongkar Karung tersebut terlebih dahulu sebelum membatal resi ini.");
+    }
+    if (fromStatus === 'CANCELLED') {
+      throw new Error("Paket memang sudah berstatus Batal (CANCELLED).");
+    }
+
+    // 2. Tandai Batal
+    await client.query(`
+      UPDATE inbound_packages 
+      SET package_status_code = 'CANCELLED', updated_at = NOW() 
+      WHERE id = $1
+    `, [packageId]);
+
+    // 3. Status History
+    await client.query(`
+      INSERT INTO inbound_package_status_history (inbound_package_id, from_status_code, to_status_code, changed_source, change_notes) 
+      VALUES ($1, $2, 'CANCELLED', 'CONSOLIDATION_MODULE', $3)
+    `, [packageId, fromStatus, 'BATAL KIRIM: ' + fullReason]);
+
+    // 4. Audit Log
+    const jsonChanges = JSON.stringify({ package_status_code: { old: fromStatus, new: "CANCELLED" }, reason: fullReason });
+    await client.query(`
+      INSERT INTO system_audit_logs (
+        entity_name, entity_id, action_type, changes_json,
+        source_module, source_action, revision_note, revised_by
+      ) VALUES (
+        $1, $2, $3, $4, 
+        $5, $6, $7, $8
+      )
+    `, [
+      'INBOUND_PACKAGE', packageId, 'CANCEL_PACKAGE_TICKET', jsonChanges,
+      'CONSOLIDATION_MODULE', 'cancelInboundPackage', fullReason, 'Admin Sesi'
+    ]);
+
+    await client.query('COMMIT');
+    revalidatePath('/consolidation');
+    return { success: true, message: `Resi ${trackingNumber} berhasil dilabeli BATAL dan dikeluarkan dari antrean.` };
+
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    return { success: false, message: err.message || 'Server error saat membatal tiket.' };
   } finally {
     client.release();
   }

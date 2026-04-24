@@ -1,13 +1,38 @@
 import pool from '@/lib/db';
 import Link from 'next/link';
+import ContainerDetachmentButton from '@/components/manifests/ContainerDetachmentButton';
 
 export const revalidate = 0;
 
-export default async function ContainerDetailPage({ params }: { params: { id: string, container_id: string } }) {
+type ContainerDetail = {
+   id: string;
+   container_number: string;
+   container_type: string;
+   destination_city: string | null;
+   max_weight_kg: number | null;
+};
+
+type BatchDetail = {
+   id: string;
+   batch_code: string;
+   vessel_name: string;
+   batch_status_code: string;
+};
+
+type ContainerShipmentRow = {
+   id: string;
+   shipment_code: string;
+   total_weight_kg: number | null;
+   shipment_status_code: string;
+   shipment_city: string | null;
+   customer_name: string | null;
+};
+
+export default async function ContainerDetailPage({ params }: { params: Promise<{ id: string, container_id: string }> }) {
    const { id, container_id } = await params;
-   let container = null;
-   let batch = null;
-   let shipments = [];
+   let container: ContainerDetail | null = null;
+   let batch: BatchDetail | null = null;
+   let shipments: ContainerShipmentRow[] = [];
    
    try {
        const resContainer = await pool.query(`SELECT * FROM batch_containers WHERE id = $1`, [container_id]);
@@ -40,7 +65,7 @@ export default async function ContainerDetailPage({ params }: { params: { id: st
       );
    }
 
-   const totalWeight = shipments.reduce((sum, s) => sum + (Number(s.total_weight_kg) || 0), 0);
+   const totalWeight = shipments.reduce((sum: number, s: ContainerShipmentRow) => sum + (Number(s.total_weight_kg) || 0), 0);
 
    return (
       <div className="max-w-5xl mx-auto space-y-6 pt-4 animate-in fade-in pb-12 overflow-x-hidden">
@@ -104,7 +129,7 @@ export default async function ContainerDetailPage({ params }: { params: { id: st
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                     {shipments.map((s: any) => {
+                     {shipments.map((s) => {
                         const isMismatch = container.destination_city && s.shipment_city && container.destination_city !== s.shipment_city;
                         
                         return (
@@ -124,8 +149,16 @@ export default async function ContainerDetailPage({ params }: { params: { id: st
                            </td>
                            <td className="p-4 text-slate-800 font-bold">{s.customer_name}</td>
                            <td className="p-4 text-right font-black text-slate-800">{s.total_weight_kg || 0} Kg</td>
-                           <td className="p-4">
+                           <td className="p-4 flex items-center justify-between">
                               <span className="text-[10px] px-2 py-1 tracking-widest bg-slate-100 text-slate-600 rounded font-bold uppercase">{s.shipment_status_code}</span>
+                              {batch.batch_status_code !== 'DEPARTED' && (
+                                 <ContainerDetachmentButton 
+                                    shipmentId={s.id} 
+                                    containerId={container.id} 
+                                    batchId={batch.id} 
+                                    shipmentCode={s.shipment_code} 
+                                 />
+                              )}
                            </td>
                         </tr>
                      )})}

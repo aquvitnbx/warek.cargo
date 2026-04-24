@@ -4,6 +4,18 @@ import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getPgErrorCode(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+}
+
+type AuditChangeMap = Record<string, { old: unknown; new: unknown }>;
+
 // Fallback Guard: Jangan crash jika credential S3 tidak ada di .env lokal
 let s3Client: S3Client | null = null;
 
@@ -108,9 +120,9 @@ export async function submitIncomingPackage(formData: FormData) {
            VALUES ($1, 'PACKAGE', $2, $3, 'Admin Hub')`,
            [packageId, dbFilePath, file.name]
         );
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
          // Jika gagal S3, gagalkan seluruh transaksi Intake
-         throw new Error('Upload Foto Bukti S3 gagal: ' + uploadError.message);
+         throw new Error('Upload Foto Bukti S3 gagal: ' + getErrorMessage(uploadError, 'Unknown upload error'));
       }
     }
 
@@ -118,10 +130,10 @@ export async function submitIncomingPackage(formData: FormData) {
     revalidatePath('/');
     return { success: true, message: 'Paket berhasil dicatat dengan aman.' };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     await client.query('ROLLBACK');
     console.error('Intake Strict Error:', error);
-    return { success: false, message: error.message || 'Gagal menyimpan transaksi.' };
+    return { success: false, message: getErrorMessage(error, 'Gagal menyimpan transaksi.') };
   } finally {
     client.release();
   }
@@ -149,9 +161,9 @@ export async function createCustomerInline(formData: FormData) {
       RETURNING id, full_name, whatsapp_number
     `, [full_name, whatsapp_number, destination_city]);
     
-    return { success: true, customer: res.rows[0] };
-  } catch (err: any) {
-    if (err.code === '23505') {
+    return { success: true, data: res.rows[0] };
+  } catch (err: unknown) {
+    if (getPgErrorCode(err) === '23505') {
        return { success: false, message: 'Nomor WhatsApp sudah terdaftar di sistem.' };
     }
     return { success: false, message: 'Gagal membuat pelanggan baru.' };
@@ -206,7 +218,7 @@ export async function updateIntakePackage(formData: FormData) {
     `, [newCustomerId, newQuantity, newSender, newDescription, newMarketplace, newCondition, newAdminNotes, packageId]);
 
     // 4. Catat Audit Log
-    const jsonChanges: any = {};
+    const jsonChanges: AuditChangeMap = {};
     if (customerChanged) jsonChanges.customer_id = { old: old.customer_id, new: newCustomerId };
     if (quantityChanged) jsonChanges.quantity = { old: old.quantity, new: newQuantity };
     if (old.sender_or_store !== newSender) jsonChanges.sender_or_store = { old: old.sender_or_store, new: newSender };
@@ -235,9 +247,9 @@ export async function updateIntakePackage(formData: FormData) {
     revalidatePath(`/intake/${old.tracking_number}`);
     revalidatePath('/packages');
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     await client.query('ROLLBACK');
-    return { success: false, message: err.message || 'Gagal mengubah manifest.' };
+    return { success: false, message: getErrorMessage(err, 'Gagal mengubah manifest.') };
   } finally {
     client.release();
   }
@@ -282,9 +294,9 @@ export async function voidIntakePackage(packageId: string, revisionNote: string)
     revalidatePath(`/intake/${resPrev.rows[0].tracking_number}`);
     revalidatePath('/packages');
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     await client.query('ROLLBACK');
-    return { success: false, message: err.message };
+    return { success: false, message: getErrorMessage(err, 'Gagal melakukan void intake.') };
   } finally {
     client.release();
   }

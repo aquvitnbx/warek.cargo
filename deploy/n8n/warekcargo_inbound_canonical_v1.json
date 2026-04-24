@@ -1,0 +1,968 @@
+{
+  "name": "WarekCargo Canonical Inbound v1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "warekcargo-inbound-canonical",
+        "options": {}
+      },
+      "id": "webhook-inbound-canonical",
+      "name": "Webhook Inbound",
+      "webhookId": "warekcargo-inbound-canonical-v1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"phone\": \"={{ ($json.body?.phone || $json.body?.from || $json.phone || '').toString() }}\",\n  \"pushName\": \"={{ ($json.body?.pushName || $json.body?.senderName || $json.pushName || '').toString() }}\",\n  \"message\": \"={{ ($json.body?.message || $json.body?.text || $json.message || '').toString() }}\",\n  \"messageType\": \"={{ (($json.body?.messageType || $json.body?.type || $json.messageType || 'text') + '').toLowerCase() }}\",\n  \"isGroup\": \"={{ String($json.body?.isGroup ?? $json.isGroup ?? false) }}\",\n  \"isFromMe\": \"={{ String($json.body?.isFromMe ?? $json.isFromMe ?? false) }}\"\n}",
+        "options": {}
+      },
+      "id": "normalize-envelope",
+      "name": "Normalize Envelope",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "filter-1",
+              "leftValue": "={{$json.messageType}}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filter-2",
+              "leftValue": "={{$json.isGroup}}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filter-3",
+              "leftValue": "={{$json.isFromMe}}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filter-4",
+              "leftValue": "={{($json.message || '').length}}",
+              "rightValue": 1000,
+              "operator": {
+                "type": "number",
+                "operation": "smaller"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "prefilter-inbound",
+      "name": "Pre-Filter Guardrail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $json.phone, message: 'Halo 👋 Pesan belum bisa diproses otomatis. Mohon kirim chat pribadi berupa teks singkat. Jika perlu, admin WarekCargo akan bantu manual.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-prefilter-fail",
+      "name": "Reply Pre-Filter Fail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phoneRaw = ($json.phone || '').toString();\nconst message = ($json.message || '').toString().replace(/\\s+/g, ' ').trim();\nconst phone = phoneRaw.replace(/^08/, '628').replace(/\\D/g, '');\nreturn [{ json: { ...$json, phone, message, hasValidPhone: phone.length >= 10 && phone.startsWith('62') } }];"
+      },
+      "id": "sanitize-phone",
+      "name": "Sanitize Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/session' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "get-session-context",
+      "name": "Get Session Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        940,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/interpret' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { message: $('Sanitize Phone').item.json.message, phone: $('Sanitize Phone').item.json.phone, partial_data: Object.assign({}, (($('Get Session Context').item.json.data) || {})) } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "interpret-message",
+      "name": "Interpret Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1180,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ Object.assign({ intent: 'OTHER', recommended_action: 'REPLY_FALLBACK_ADMIN', extracted_data: {}, is_data_complete: false, missing_critical_fields: [], clarification_question: null }, ($json.data || {}), { phone: $('Sanitize Phone').item.json.phone, pushName: $('Sanitize Phone').item.json.pushName || '', message: $('Sanitize Phone').item.json.message }) }}",
+        "options": {}
+      },
+      "id": "unwrap-interpret",
+      "name": "Unwrap Interpret",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1420,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/session' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $json.phone, intent: $json.intent, is_data_complete: $json.is_data_complete, missing_critical_fields: $json.missing_critical_fields || [], partial_data: $json.extracted_data || {} } }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "post-session-bypass",
+      "name": "Post Session Bypass",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1660,
+        -340
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-1",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "PROCEED_TO_INTAKE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-2",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "PROCEED_TO_LOOKUP",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-3",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_ONBOARDING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-4",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_RETURNING_ONBOARDING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-5",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_HUB_CONFIRMATION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-6",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_FIELD_EXPLANATION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-7",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_CLARIFICATION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {},
+                "conditions": [
+                  {
+                    "id": "act-8",
+                    "leftValue": "={{$json.recommended_action}}",
+                    "rightValue": "REPLY_FALLBACK_ADMIN",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "intent-switch",
+      "name": "Intent Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.1,
+      "position": [
+        1660,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/intake' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $json.phone, owner_name: $json.extracted_data.customer_name, hub_selection: $json.extracted_data.hub_selection, packages: $json.extracted_data.packages } }}",
+        "options": {
+          "timeout": 30000
+        },
+        "continueOnFail": true
+      },
+      "id": "call-intake-api",
+      "name": "Call Intake API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/tracking' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "awb",
+              "value": "={{ $json.tracking_identifier }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        },
+        "continueOnFail": true
+      },
+      "id": "call-tracking-api",
+      "name": "Call Tracking API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "ok-1",
+              "leftValue": "={{$json.error === undefined && $json.success !== false && $json.statusCode !== 401 && $json.statusCode !== 403 && $json.statusCode !== 500}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "internal-api-ok",
+      "name": "Internal API OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2160,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: $json.human_message || 'Permintaan berhasil diterima.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-api-success",
+      "name": "Reply API Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2400,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: 'Mohon maaf, sistem WarekCargo sedang sibuk. Silakan coba lagi beberapa saat atau hubungi admin.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-api-fail",
+      "name": "Reply API Fail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2400,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: 'Halo 👋 Kami bantu cek resi dan pendaftaran paket WarekCargo. Untuk mulai kirim paket, balas dengan hub penerimaan Anda: Jakarta, Surabaya, atau Makassar.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-onboarding",
+      "name": "Reply Onboarding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: 'Halo ' + (($('Get Session Context').item.json.data && $('Get Session Context').item.json.data.recognized_name) || '') + ' 👋 Jika ingin mengirim paket lagi, silakan pilih hub penerimaan: Jakarta, Surabaya, atau Makassar.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-returning-onboarding",
+      "name": "Reply Returning Onboarding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: 'Hub ' + $json.extracted_data.hub_selection + ' dicatat. Mohon balas dalam satu pesan lengkap dengan format:\n- Nama Pemilik Barang\n- Nomor Resi\n- Kota Tujuan\n- Isi Paket' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-hub-confirmation",
+      "name": "Reply Hub Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: $json.clarification_question || 'Format singkatnya: pilih hub penerimaan, lalu kirim nama pemilik barang, nomor resi, kota tujuan, dan isi paket.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-field-explanation",
+      "name": "Reply Field Explanation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: $json.clarification_question || 'Mohon lengkapi data yang masih kurang agar proses bisa dilanjutkan.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-clarification",
+      "name": "Reply Clarification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $('Sanitize Phone').item.json.phone, message: 'Pesan belum bisa ditangani otomatis. Mohon hubungi admin WarekCargo untuk bantuan manual.' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reply-fallback-admin",
+      "name": "Reply Fallback Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Inbound": {
+      "main": [
+        [
+          {
+            "node": "Normalize Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Envelope": {
+      "main": [
+        [
+          {
+            "node": "Pre-Filter Guardrail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre-Filter Guardrail": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Phone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Pre-Filter Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Phone": {
+      "main": [
+        [
+          {
+            "node": "Get Session Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session Context": {
+      "main": [
+        [
+          {
+            "node": "Interpret Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpret Message": {
+      "main": [
+        [
+          {
+            "node": "Unwrap Interpret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unwrap Interpret": {
+      "main": [
+        [
+          {
+            "node": "Intent Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post Session Bypass",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Switch": {
+      "main": [
+        [
+          {
+            "node": "Call Intake API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Tracking API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Returning Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Hub Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Field Explanation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Clarification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Fallback Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Intake API": {
+      "main": [
+        [
+          {
+            "node": "Internal API OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Tracking API": {
+      "main": [
+        [
+          {
+            "node": "Internal API OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internal API OK?": {
+      "main": [
+        [
+          {
+            "node": "Reply API Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply API Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "versionId": "warekcargo-canonical-inbound-v1"
+}

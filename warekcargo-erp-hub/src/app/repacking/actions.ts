@@ -3,6 +3,10 @@
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export async function submitRepack(formData: FormData) {
   const shipmentId = formData.get('shipment_id') as string;
   const totalWeightKg = parseFloat(formData.get('total_weight_kg') as string);
@@ -84,10 +88,10 @@ export async function submitRepack(formData: FormData) {
     
     return { success: true, message: `Finalisasi Repack Berhasil!` };
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     await client.query('ROLLBACK');
     console.error('Repacking Error:', err);
-    return { success: false, message: err.message || 'Gagal merekam validasi fisik.' };
+    return { success: false, message: getErrorMessage(err, 'Gagal merekam validasi fisik.') };
   } finally {
     client.release();
   }
@@ -101,22 +105,33 @@ export async function cancelConsolidation(shipmentId: string, reason: string) {
   try {
     await client.query('BEGIN');
 
-    // 1. Cek Status Mutlak (HANYA Boleh AWAITING_PACKAGES atau DRAFT)
-    const resPrev = await client.query('SELECT shipment_code, shipment_status_code FROM customer_shipments WHERE id = $1 FOR UPDATE', [shipmentId]);
+    // 1. Cek Status Logistik & Keuangan Mutlak
+    const resPrev = await client.query('SELECT shipment_code, shipment_status_code, payment_status_code, amount_paid FROM customer_shipments WHERE id = $1 FOR UPDATE', [shipmentId]);
     if (resPrev.rows.length === 0) throw new Error("Shipment tidak ditemukan di database.");
     
-    const { shipment_status_code: fromStatus, shipment_code: shipmentCode } = resPrev.rows[0];
+    const { shipment_status_code: fromStatus, shipment_code: shipmentCode, payment_status_code, amount_paid } = resPrev.rows[0];
 
-    if (!['AWAITING_PACKAGES', 'DRAFT'].includes(fromStatus)) {
-       throw new Error(`Bongkar Karung Ditolak: Karung berstatus [${fromStatus}] sudah masuk logistik dan tidak boleh dibongkar ulang.`);
+    // Garis Batas Irreversibel: DISPATCHED dan seterusnya = HARAM dibongkar.
+    const allowedReversible = ['DRAFT', 'AWAITING_PACKAGES', 'READY_FOR_DISPATCH', 'MANIFESTED'];
+    if (!allowedReversible.includes(fromStatus)) {
+       throw new Error(`Bongkar Karung Ditolak: Karung telah melewati titik keberangkatan (Status saat ini: ${fromStatus}).`);
     }
 
-    // 2. Set Karung Menjadi CANCELLED
+    // 2. Set Status Logistik & Keuangan
+    const paidAmount = Number(amount_paid || 0);
+    const newPaymentStatus = paidAmount > 0 ? 'REFUND_PENDING' : 'VOIDED';
+
     await client.query(`
       UPDATE customer_shipments 
-      SET shipment_status_code = 'CANCELLED', notes = CONCAT(notes, ' | BONGKAR KARUNG: ', $2::text), updated_at = NOW()
-      WHERE id = $1
-    `, [shipmentId, reason]);
+      SET 
+         shipment_status_code = 'CANCELLED', 
+         payment_status_code = $1,
+         batch_id = NULL,
+         batch_container_id = NULL,
+         notes = CONCAT(notes, ' | BONGKAR KARUNG: ', $2::text), 
+         updated_at = NOW()
+      WHERE id = $3
+    `, [newPaymentStatus, reason, shipmentId]);
 
     // 3. Rekam History Shipment
     await client.query(`
@@ -126,7 +141,7 @@ export async function cancelConsolidation(shipmentId: string, reason: string) {
 
     // 4. Detach Packages dan Kembalikan ke Hub
     const pkgRes = await client.query(`SELECT inbound_package_id FROM shipment_packages WHERE shipment_id = $1`, [shipmentId]);
-    const pkgIds = pkgRes.rows.map(r => r.inbound_package_id);
+    const pkgIds = pkgRes.rows.map((r: { inbound_package_id: string }) => r.inbound_package_id);
 
     if (pkgIds.length > 0) {
        // Putus relasi (Detach)
@@ -134,39 +149,51 @@ export async function cancelConsolidation(shipmentId: string, reason: string) {
        
        // Tulis riwayat bahwa paket-paket ini terpental balik ke HUB murni
        for (const pid of pkgIds) {
-          // Walau statusnya di DB tidak pernah berubah dari RECEIVED_AT_HUB, kita rekam historis agar QC tahu paket ini pernah gagal berangkat
           await client.query(`
              INSERT INTO inbound_package_status_history (inbound_package_id, from_status_code, to_status_code, changed_source, change_notes) 
-             VALUES ($1, 'RECEIVED_AT_HUB', 'RECEIVED_AT_HUB', 'REPACKING_MODULE', 'Paket dilepas dari Karung ' || $2::text || ' karena pembongkaran.')
+             VALUES ($1, 'RECEIVED_AT_HUB', 'RECEIVED_AT_HUB', 'REPACKING_MODULE', 'Paket dilepas paksa dari Karung ' || $2::text || ' akibat pembongkaran sentral.')
           `, [pid, shipmentCode]);
        }
     }
 
-    // 5. Audit Log Inti
+    // 5. Audit Log Lintas Domain
+    // Log pembongkaran fisik
     await client.query(`
       INSERT INTO system_audit_logs (
         entity_name, entity_id, action_type, changes_json,
         source_module, source_action, revision_note, revised_by, related_shipment_id
-      ) VALUES (
-        $1, $2, $3, $4, 
-        $5, $6, $7, $8, $9
-      )
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `, [
-       'CUSTOMER_SHIPMENT', shipmentId, 'BONGKAR_KARUNG_KONSOLIDASI', JSON.stringify({ detached_packages_count: pkgIds.length, reason }),
-       'REPACKING_MODULE', 'cancelConsolidation', reason, 'Admin Logistik Sesi', shipmentId
+       'CUSTOMER_SHIPMENT', shipmentId, 'BONGKAR_KARUNG_KONSOLIDASI', JSON.stringify({ detached_packages_count: pkgIds.length, original_status: fromStatus }),
+       'REPACKING_MODULE', 'cancelConsolidation', reason, 'Admin Sesi', shipmentId
     ]);
+
+    // Log pembatalan tagihan keuangan
+    if (newPaymentStatus === 'VOIDED' || newPaymentStatus === 'REFUND_PENDING') {
+       await client.query(`
+         INSERT INTO system_audit_logs (
+           entity_name, entity_id, action_type, changes_json,
+           source_module, source_action, revision_note, revised_by, related_shipment_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       `, [
+          'FINANCE_CHARGE', shipmentId, newPaymentStatus === 'REFUND_PENDING' ? 'REFUND_REQUIREMENT_TRIGGERED' : 'VOID_CHARGE', 
+          JSON.stringify({ payment_status: { old: payment_status_code, new: newPaymentStatus }, amount_paid: paidAmount }),
+          'FINANCE_MODULE', 'cancelConsolidation_hook', 'Otomatis mengikuti pembongkaran Karung', 'Sistem', shipmentId
+       ]);
+    }
 
     await client.query('COMMIT');
 
     revalidatePath('/repacking');
     revalidatePath(`/repacking/${shipmentId}`);
+    revalidatePath('/finance');
     
-    return { success: true, message: `Berhasil merusak dan membongkar karung ${shipmentCode}.` };
+    return { success: true, message: `Berhasil membongkar karung ${shipmentCode}. Status Keuangan: ${newPaymentStatus}.` };
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     await client.query('ROLLBACK');
     console.error('Bongkar Error:', err);
-    return { success: false, message: err.message || 'Gagal membatalkan spesifikasi karung.' };
+    return { success: false, message: getErrorMessage(err, 'Gagal membatalkan spesifikasi karung.') };
   } finally {
     client.release();
   }

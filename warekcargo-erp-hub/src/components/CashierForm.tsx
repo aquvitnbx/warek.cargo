@@ -1,17 +1,59 @@
 'use client';
 
 import { useState } from 'react';
-import { setFinalCharge, addPayment } from '@/app/finance/actions';
+import { setFinalCharge, addPayment, voidPaymentRecord } from '@/app/finance/actions';
+import { cancelConsolidation } from '@/app/repacking/actions';
+
+type ShipmentPricingRate = {
+  min_weight_kg: number | string | null;
+  min_volume_m3: number | string | null;
+  price_per_kg: number | string | null;
+  price_per_m3: number | string | null;
+};
+
+type CashierShipment = {
+  id: string;
+  final_charge_amount: number | string | null;
+  amount_paid: number | string | null;
+  payment_status_code: string;
+  pricing_rate: ShipmentPricingRate | null;
+  total_weight_kg: number | string | null;
+  total_volume_m3: number | string | null;
+  shipment_status_code: string;
+};
+
+type PaymentRow = {
+  id: string;
+  amount: number | string;
+  method_name: string;
+  paid_at: string | Date;
+  paid_to: string | null;
+  payment_reference: string | null;
+};
+
+type PaymentMethodOption = {
+  code: string;
+  name: string;
+};
 
 interface CashierFormProps {
-  shipment: any;
-  payments: any[];
-  paymentMethods: any[];
+  shipment: CashierShipment;
+  payments: PaymentRow[];
+  paymentMethods: PaymentMethodOption[];
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export default function CashierForm({ shipment, payments, paymentMethods }: CashierFormProps) {
   const [isPending, setIsPending] = useState(false);
   const [feedback, setFeedback] = useState<{type: 'success'|'error', msg: string}|null>(null);
+  const [isEditingCharge, setIsEditingCharge] = useState(false);
+  
+  // State Void Cicilan & Transaksi
+  const [voidTarget, setVoidTarget] = useState<{id: string, amount: string} | null>(null);
+  const [doomVoidOpen, setDoomVoidOpen] = useState(false);
 
   const formatIdr = (num: number) => {
      if (!num) return 'Rp 0';
@@ -56,10 +98,13 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
      
      try {
        const res = await setFinalCharge(formData);
-       if (res.success) setFeedback({ type: 'success', msg: 'Nilai tagihan final dikunci.' });
-       else setFeedback({ type: 'error', msg: res.message });
-     } catch (err: any) {
-        setFeedback({ type: 'error', msg: err.message });
+       if (res.success) {
+          setFeedback({ type: 'success', msg: 'Nilai tagihan final dikunci.' });
+          setIsEditingCharge(false);
+       }
+       else setFeedback({ type: 'error', msg: res.message || 'Gagal menyimpan tagihan.' });
+     } catch (err: unknown) {
+        setFeedback({ type: 'error', msg: getErrorMessage(err, 'Gagal menyimpan tagihan.') });
      } finally {
         setIsPending(false);
      }
@@ -78,10 +123,57 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
           setFeedback({ type: 'success', msg: 'Pembayaran berhasil dicatat!' });
           formElement.reset();
        } else {
-          setFeedback({ type: 'error', msg: res.message });
+          setFeedback({ type: 'error', msg: res.message || 'Gagal mencatat pembayaran.' });
        }
-     } catch (err: any) {
-        setFeedback({ type: 'error', msg: err.message });
+     } catch (err: unknown) {
+        setFeedback({ type: 'error', msg: getErrorMessage(err, 'Gagal mencatat pembayaran.') });
+     } finally {
+        setIsPending(false);
+     }
+  };
+
+  const handleVoidPayment = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setIsPending(true);
+     setFeedback(null);
+     const formData = new FormData(e.currentTarget);
+     formData.append('shipment_id', shipment.id);
+     
+     try {
+       const res = await voidPaymentRecord(formData);
+       if (res.success) {
+          setFeedback({ type: 'success', msg: res.message || 'Cicilan divoid!' });
+          setVoidTarget(null);
+       } else {
+          setFeedback({ type: 'error', msg: res.message || 'Gagal membatalkan pembayaran.' });
+       }
+     } catch (err: unknown) {
+        setFeedback({ type: 'error', msg: getErrorMessage(err, 'Gagal membatalkan pembayaran.') });
+     } finally {
+        setIsPending(false);
+     }
+  };
+
+  const handleDoomVoid = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setIsPending(true);
+     setFeedback(null);
+     const formData = new FormData(e.currentTarget);
+     
+     try {
+       const shipmentId = formData.get('shipment_id') as string;
+       const reason = formData.get('reason') as string;
+       const res = await cancelConsolidation(shipmentId, reason);
+       if (res.success) {
+          setFeedback({ type: 'success', msg: 'Transaksi berhasil di-Void Mutlak. Barang dikepras keluar.' });
+          setDoomVoidOpen(false);
+          // Halaman akan revalidate dan info akan reset otomatis (atau direct ke finance dashboard jika status berubah void)
+          window.location.href = '/finance'; 
+       } else {
+          setFeedback({ type: 'error', msg: res.message || 'Gagal membatalkan konsolidasi.' });
+       }
+     } catch (err: unknown) {
+        setFeedback({ type: 'error', msg: getErrorMessage(err, 'Gagal membatalkan konsolidasi.') });
      } finally {
         setIsPending(false);
      }
@@ -100,7 +192,7 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
           )}
 
           {/* BLOCK 1: Set Final Tagihan */}
-          {!isFinalized ? (
+          {(!isFinalized || isEditingCharge) ? (
              <form onSubmit={handleSetCharge} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="font-black text-slate-800 text-sm tracking-wide border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
                    <span>🔒 KUNCI TAGIHAN FINAL</span>
@@ -154,17 +246,38 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
                   </div>
                 </div>
 
-                <button 
-                   type="submit" 
-                   disabled={isPending}
-                   className="w-full mt-4 py-4 bg-slate-800 hover:bg-black disabled:bg-slate-400 text-white font-black tracking-widest rounded-xl transition-all"
-                >
-                   {isPending ? 'MEMPROSES...' : 'KUNCI TAGIHAN'}
-                </button>
+                <div className="flex gap-2 mt-4">
+                   {isFinalized && (
+                     <button 
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => setIsEditingCharge(false)}
+                        className="w-1/3 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-widest rounded-xl transition-all"
+                     >
+                        BATAL
+                     </button>
+                   )}
+                   <button 
+                      type="submit" 
+                      disabled={isPending}
+                      className="flex-1 py-4 bg-slate-800 hover:bg-black disabled:bg-slate-400 text-white font-black tracking-widest rounded-xl transition-all"
+                   >
+                      {isPending ? 'MEMPROSES...' : (isFinalized ? 'SIMPAN REVISI' : 'KUNCI TAGIHAN')}
+                   </button>
+                </div>
              </form>
           ) : (
-             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -mr-4 -mt-4"></div>
+             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110 group-hover:bg-amber-50"></div>
+                
+                {/* Tombol Edit Tersembunyi */}
+                <button 
+                   onClick={() => setIsEditingCharge(true)}
+                   className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-600 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                   ✏️ Edit Nominal
+                </button>
+
                 <div className="relative z-10">
                    <h3 className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1">Total Tagihan Karung</h3>
                    <div className="text-4xl font-black text-blue-600">{formatIdr(bill)}</div>
@@ -250,6 +363,19 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
                <p className="text-emerald-700 mt-2 text-sm max-w-md">Tidak ada lagi tagihan tertunggak pada karung pengiriman ini.</p>
             </div>
           )}
+
+          {/* DOOMSDAY VOID BUTTON (Tampil kapan saja selama bukan dibatalkan) */}
+          {shipment.shipment_status_code !== 'CANCELLED' && (
+             <div className="mt-8 border-t border-red-100 pt-6">
+                <button 
+                  onClick={() => setDoomVoidOpen(true)}
+                  className="w-full py-4 border-2 border-red-200 text-red-600 font-black tracking-widest rounded-xl hover:bg-red-50 transition-colors uppercase text-sm flex items-center justify-center gap-2"
+                >
+                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                   Void Seluruh Transaksi & Bongkar Karung
+                </button>
+             </div>
+          )}
        </div>
 
        {/* PANEL KANAN: Riwayat Pembayaran */}
@@ -279,18 +405,130 @@ export default function CashierForm({ shipment, payments, paymentMethods }: Cash
                             <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-0.5">Waktu Transaksi</span>
                             <span className="text-xs font-medium text-slate-600">{new Date(pay.paid_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                          </div>
-                         {(pay.paid_to || pay.payment_reference) && (
+                          {(pay.paid_to || pay.payment_reference) && (
                            <div className="text-[10px] text-right text-slate-400 max-w-[150px] truncate" title={`${pay.paid_to} - ${pay.payment_reference}`}>
                               Kasir: <span className="font-bold text-slate-600">{pay.paid_to || '-'}</span> <br/>
                               Ref: <span className="font-bold text-slate-600 truncate">{pay.payment_reference || '-'}</span>
                            </div>
                          )}
                       </div>
+                      
+                      {/* Tombol Void Kasir (Kecil di Pojok Bawah) */}
+                      <div className="border-t border-slate-100 pt-2 mt-1 flex justify-end">
+                         <button 
+                            type="button"
+                            onClick={() => setVoidTarget({id: pay.id, amount: formatIdr(Number(pay.amount))})}
+                            className="text-[10px] font-bold text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded"
+                         >
+                            Batalkan Cicilan Ini
+                         </button>
+                      </div>
                    </div>
                 ))
              )}
           </div>
        </div>
+
+       {/* MODAL VOID CICILAN */}
+       {voidTarget && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+             <div className="p-6 bg-red-50 border-b border-red-100 flex items-center gap-4">
+                <span className="text-4xl">🚨</span>
+                <div>
+                   <h3 className="font-black text-red-800 tracking-tight">Void Pembayaran</h3>
+                   <p className="text-xs font-medium text-red-600 mt-0.5">Penarikan dicatat ke audit log.</p>
+                </div>
+             </div>
+             <form onSubmit={handleVoidPayment} className="p-6">
+                <input type="hidden" name="payment_id" value={voidTarget.id} />
+                <p className="text-sm font-medium text-slate-600 mb-4">
+                   Anda akan menghapus riwayat cicilan sebesar <span className="font-black text-slate-800 bg-slate-100 px-1 rounded">{voidTarget.amount}</span>.
+                </p>
+                <div className="mb-6">
+                   <label className="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-2 block">
+                      Alasan Void (Wajib Diisi)
+                   </label>
+                   <textarea 
+                     name="reason" 
+                     required 
+                     rows={3} 
+                     placeholder="Contoh: Salah ketik angka masuk, setoran batal..."
+                     className="w-full text-sm p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                   />
+                </div>
+                <div className="flex gap-3">
+                   <button 
+                     type="button" 
+                     onClick={() => setVoidTarget(null)}
+                     disabled={isPending}
+                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm"
+                   >
+                     Batal
+                   </button>
+                   <button 
+                     type="submit" 
+                     disabled={isPending}
+                     className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm shadow-[0_4px_12px_rgb(220,38,38,0.3)] disabled:opacity-50"
+                   >
+                     {isPending ? 'Memproses...' : 'Tarik Uang'}
+                   </button>
+                </div>
+             </form>
+           </div>
+         </div>
+       )}
+
+       {/* MODAL DOOMSDAY VOID TRANSAKSI KESELURUHAN */}
+       {doomVoidOpen && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+             <div className="p-6 bg-red-600 text-white flex items-center gap-4">
+                <span className="text-4xl">🧨</span>
+                <div>
+                   <h3 className="font-black text-xl tracking-tight">Void Keseluruhan Transaksi</h3>
+                   <p className="text-xs font-medium text-red-200 mt-0.5">Operasi logistik akan digugurkan.</p>
+                </div>
+             </div>
+             <form onSubmit={handleDoomVoid} className="p-6">
+                <input type="hidden" name="shipment_id" value={shipment.id} />
+                <div className="bg-red-50 text-red-800 p-4 rounded-xl text-sm font-medium mb-6">
+                   <strong className="block mb-1">Peringatan Keras:</strong>
+                   Tindakan ini akan mengosongkan status tagihan, memutus ikatan Resi/Karung dari Manifes (<span className="font-mono text-xs text-red-600">batch_id = NULL</span>), dan melepeh kemasan paket kembali ke gudang awal (<span className="font-mono text-xs text-red-600">RECEIVED_AT_HUB</span>).
+                </div>
+                <div className="mb-6">
+                   <label className="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-2 block">
+                      Alasan Pembongkaran / Void Transaksi
+                   </label>
+                   <textarea 
+                     name="reason" 
+                     required 
+                     rows={3} 
+                     placeholder="Contoh: Transaksi batal karena barang harus dibongkar, atau Refund mutlak..."
+                     className="w-full text-sm p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                   />
+                </div>
+                <div className="flex gap-3">
+                   <button 
+                     type="button" 
+                     onClick={() => setDoomVoidOpen(false)}
+                     disabled={isPending}
+                     className="w-1/3 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
+                   >
+                     Tutup
+                   </button>
+                   <button 
+                     type="submit" 
+                     disabled={isPending}
+                     className="w-2/3 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm shadow-[0_4px_12px_rgb(220,38,38,0.3)] disabled:opacity-50 transition-all uppercase tracking-wider"
+                   >
+                     {isPending ? 'Mengeksekusi...' : 'HANCURKAN & VOID'}
+                   </button>
+                </div>
+             </form>
+           </div>
+         </div>
+       )}
        
     </div>
   )

@@ -1,11 +1,25 @@
 import pool from '@/lib/db';
 import Link from 'next/link';
 
+type RepackingShipmentCard = {
+  shipment_id: string;
+  shipment_code: string;
+  shipment_status_code: string;
+  total_weight_kg: number | null;
+  total_volume_m3: number | null;
+  full_name: string;
+  destination_city: string;
+  package_count: number;
+};
+
 export const revalidate = 0;
 
-export default async function RepackingDashboard() {
-  let shipments = [];
-  let dbError = null;
+export default async function RepackingDashboard({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const resolvedParams = await searchParams;
+  const isFinishedTab = resolvedParams.tab === 'finished';
+
+  let shipments: RepackingShipmentCard[] = [];
+  let dbError: string | null = null;
 
   try {
     const query = `
@@ -20,15 +34,30 @@ export default async function RepackingDashboard() {
         (SELECT count(*) FROM shipment_packages sp WHERE sp.shipment_id = s.id) as package_count
       FROM customer_shipments s
       JOIN customers c ON s.customer_id = c.id
-      WHERE s.shipment_status_code IN ('DRAFT', 'AWAITING_PACKAGES', 'READY_FOR_DISPATCH')
       ORDER BY 
         CASE WHEN s.total_weight_kg IS NULL THEN 0 ELSE 1 END,
         s.created_at DESC
     `;
     const res = await pool.query(query);
-    shipments = res.rows;
-  } catch (err: any) {
-    dbError = err.message || "Gagal terkoneksi ke sistem Database.";
+    const rows = res.rows as RepackingShipmentCard[];
+    
+    // Filter active vs finished based on tab
+    if (isFinishedTab) {
+       shipments = rows.filter((s) => [
+         'READY_FOR_DISPATCH',
+         'MANIFESTED',
+         'DISPATCHED',
+         'ARRIVED_DESTINATION',
+         'READY_FOR_PICKUP',
+         'OUT_FOR_DELIVERY',
+         'COMPLETED',
+         'CANCELLED'
+       ].includes(s.shipment_status_code));
+    } else {
+       shipments = rows.filter((s) => ['DRAFT', 'AWAITING_PACKAGES'].includes(s.shipment_status_code));
+    }
+  } catch (err: unknown) {
+    dbError = err instanceof Error ? err.message : "Gagal terkoneksi ke sistem Database.";
   }
 
   return (
@@ -48,6 +77,22 @@ export default async function RepackingDashboard() {
          </div>
       </div>
 
+      {/* TABS FILTER */}
+      <div className="flex border-b border-slate-200 gap-6">
+         <Link 
+            href="/repacking?tab=active" 
+            className={`pb-3 font-bold text-sm tracking-wide ${!isFinishedTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+         >
+            Sedang Berjalan (Belum Ditimbang)
+         </Link>
+         <Link 
+            href="/repacking?tab=finished" 
+            className={`pb-3 font-bold text-sm tracking-wide ${isFinishedTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+         >
+            Riwayat Selesai Repack
+         </Link>
+      </div>
+
       {dbError && (
          <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-center gap-4 text-red-700 shadow-sm">
             <span className="text-3xl">📡</span>
@@ -59,8 +104,8 @@ export default async function RepackingDashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {shipments.map((shp: any) => {
-          const isFinished = shp.total_weight_kg > 0;
+        {shipments.map((shp) => {
+          const isFinished = Number(shp.total_weight_kg || 0) > 0;
           
           return (
           <Link href={`/repacking/${shp.shipment_id}`} key={shp.shipment_id} className="block group">
@@ -107,8 +152,12 @@ export default async function RepackingDashboard() {
         {shipments.length === 0 && !dbError && (
           <div className="col-span-full bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-16 flex flex-col items-center justify-center text-center">
              <span className="text-5xl opacity-30 grayscale mb-4">🧹</span>
-             <h3 className="text-slate-500 font-black tracking-widest uppercase text-sm">Gudang Repacking Kosong</h3>
-             <p className="text-slate-400 mt-2 text-sm max-w-md">Belum ada karung Konsolidasi baru yang perlu ditimbang/diukur volumenya.</p>
+             <h3 className="text-slate-500 font-black tracking-widest uppercase text-sm">
+               {isFinishedTab ? 'Belum Ada Riwayat Repacking' : 'Gudang Repacking Kosong'}
+             </h3>
+             <p className="text-slate-400 mt-2 text-sm max-w-md">
+               {isFinishedTab ? 'Karung yang sudah selesai ditimbang (Ready to Dispatch) akan tampil di sini.' : 'Belum ada karung Konsolidasi baru yang perlu ditimbang/diukur volumenya.'}
+             </p>
           </div>
         )}
       </div>

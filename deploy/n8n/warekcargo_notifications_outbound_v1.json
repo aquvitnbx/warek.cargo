@@ -1,0 +1,215 @@
+{
+  "name": "WarekCargo Notifications Outbound v1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notifications-outbound",
+        "options": {}
+      },
+      "id": "webhook-notifications-outbound",
+      "name": "Webhook Notifications Outbound",
+      "webhookId": "warekcargo-notifications-outbound-v1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst messages = Array.isArray(body.messages) ? body.messages : [];\nreturn messages.map((msg) => {\n  const phone = (msg.phone || '').toString().replace(/^08/, '628').replace(/\\D/g, '');\n  const text = (msg.text || '').toString().replace(/\\s+/g, ' ').trim();\n  const skip = !msg.id || !phone || !text;\n  return {\n    json: {\n      event_type: body.event_type || null,\n      shipment_id: body.shipment_id || null,\n      notification_log_id: msg.id || null,\n      phone,\n      text,\n      skip_send: skip,\n      skip_reason: !msg.id ? 'notification_log_id kosong' : (!phone ? 'nomor tujuan tidak valid' : (!text ? 'pesan kosong' : null))\n    }\n  };\n});"
+      },
+      "id": "expand-messages",
+      "name": "Expand Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "sendable-1",
+              "leftValue": "={{$json.skip_send}}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "message-sendable",
+      "name": "Message Sendable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WA_GATEWAY_SEND_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.WA_GATEWAY_AUTH_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { phone: $json.phone, message: $json.text } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-outbound-message",
+      "name": "Send Outbound Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        760,
+        -100
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { notification_log_ids: [$('Expand Messages').item.json.notification_log_id].filter(Boolean), status: $('Expand Messages').item.json.skip_send ? 'SKIPPED' : ($json.error ? 'FAILED' : 'SENT'), provider_message_id: $('Expand Messages').item.json.skip_send ? null : ($json.id || ($json.data && $json.data.id) || ($json.messageId || null)), error_reason: $('Expand Messages').item.json.skip_send ? $('Expand Messages').item.json.skip_reason : (($json.error && ($json.error.message || $json.error.description)) || $json.message || null) } }}",
+        "options": {}
+      },
+      "id": "build-callback-payload",
+      "name": "Build Callback Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1020,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ERP_INTERNAL_BASE_URL + '/api/v1/internal/notifications/callback' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-api-key",
+              "value": "={{ $env.INTERNAL_AUTOMATION_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "post-notification-callback",
+      "name": "Post Notification Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        0
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook Notifications Outbound": {
+      "main": [
+        [
+          {
+            "node": "Expand Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Messages": {
+      "main": [
+        [
+          {
+            "node": "Message Sendable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Sendable?": {
+      "main": [
+        [
+          {
+            "node": "Send Outbound Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Callback Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Outbound Message": {
+      "main": [
+        [
+          {
+            "node": "Build Callback Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Callback Payload": {
+      "main": [
+        [
+          {
+            "node": "Post Notification Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "versionId": "warekcargo-notifications-outbound-v1"
+}

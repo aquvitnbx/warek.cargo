@@ -3,7 +3,10 @@ import Link from 'next/link';
 
 export const revalidate = 0;
 
-export default async function ManifestsList() {
+export default async function ManifestsList({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const resolvedParams = await searchParams;
+  const isFinishedTab = resolvedParams.tab === 'finished';
+
   let batches = [];
   let hubs = [];
   let errorMsg = null;
@@ -45,6 +48,22 @@ export default async function ManifestsList() {
           </Link>
        </div>
 
+       {/* TABS FILTER */}
+       <div className="flex border-b border-slate-200 gap-6">
+          <Link 
+            href="/manifests?tab=active" 
+            className={`pb-3 font-bold text-sm tracking-wide ${!isFinishedTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+             Sedang Berjalan
+          </Link>
+          <Link 
+            href="/manifests?tab=finished" 
+            className={`pb-3 font-bold text-sm tracking-wide ${isFinishedTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+             Selesai & Batal
+          </Link>
+       </div>
+
        {errorMsg && (
           <div className="p-4 bg-red-50 text-red-600 font-bold text-sm border-l-4 border-red-500">
              Gagal Memuat Database: {errorMsg}
@@ -52,7 +71,10 @@ export default async function ManifestsList() {
        )}
 
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {batches.map((b: any) => {
+          {batches.filter((b: any) => {
+             const isFinished = b.batch_status_code === 'ARRIVED' || b.batch_status_code === 'CANCELLED';
+             return isFinishedTab ? isFinished : !isFinished;
+          }).map((b: any) => {
              const isOpen = b.batch_status_code === 'OPEN';
              const isClosed = b.batch_status_code === 'CLOSED';
              const isDeparted = b.batch_status_code === 'DEPARTED';
@@ -106,11 +128,18 @@ export default async function ManifestsList() {
              );
           })}
 
-          {batches.length === 0 && (
+          {batches.filter((b: any) => {
+             const isFinished = b.batch_status_code === 'ARRIVED' || b.batch_status_code === 'CANCELLED';
+             return isFinishedTab ? isFinished : !isFinished;
+          }).length === 0 && (
              <div className="md:col-span-2 lg:col-span-3 text-center py-20 border-2 border-dashed border-slate-200 rounded-3xl">
                 <span className="text-5xl opacity-50 block mb-4">⚓</span>
-                <h3 className="text-lg font-bold text-slate-600 uppercase tracking-widest">Belum Ada Jadwal Pelayaran Aktif</h3>
-                <p className="text-slate-400 text-sm mt-1">Buat jadwal armada baru untuk mulai memuat manifest karung Anda.</p>
+                <h3 className="text-lg font-bold text-slate-600 uppercase tracking-widest">
+                   {isFinishedTab ? 'Belum Ada Jadwal Selesai' : 'Belum Ada Jadwal Pelayaran Aktif'}
+                </h3>
+                <p className="text-slate-400 text-sm mt-1">
+                   {isFinishedTab ? 'Data histori kapal yang tiba atau batal akan muncul di sini.' : 'Buat jadwal armada baru untuk mulai memuat manifest karung Anda.'}
+                </p>
              </div>
           )}
        </div>

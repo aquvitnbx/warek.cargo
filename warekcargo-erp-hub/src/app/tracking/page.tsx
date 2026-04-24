@@ -2,6 +2,18 @@ import pool from '@/lib/db';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+type TrackingShipment = {
+  id: string;
+  shipment_code: string;
+  shipment_status_code: string;
+  payment_status_code: string;
+  updated_at: string | Date;
+  full_name: string;
+  destination_city: string;
+  batch_code: string | null;
+  vessel_name: string | null;
+};
+
 export const revalidate = 0;
 
 export default async function TrackingDashboard({ searchParams }: { searchParams: Promise<{ query?: string }> }) {
@@ -9,8 +21,8 @@ export default async function TrackingDashboard({ searchParams }: { searchParams
   const rawQuery = resolvedParams.query;
   const searchQuery = rawQuery ? rawQuery.trim().toUpperCase() : '';
 
-  let dbError = null;
-  let shipments = [];
+  let dbError: string | null = null;
+  let shipments: TrackingShipment[] = [];
 
   try {
      let sqlQuery = `
@@ -39,8 +51,8 @@ export default async function TrackingDashboard({ searchParams }: { searchParams
 
      const res = await pool.query(sqlQuery, params);
      shipments = res.rows;
-  } catch (err: any) {
-     dbError = err.message;
+  } catch (err: unknown) {
+     dbError = err instanceof Error ? err.message : 'Gagal memuat data tracking.';
   }
 
   // Handling search form submittion locally
@@ -107,10 +119,12 @@ export default async function TrackingDashboard({ searchParams }: { searchParams
                 </tr>
              </thead>
              <tbody className="divide-y divide-slate-100">
-                {shipments.map((shp: any) => {
+                {shipments.map((shp) => {
                    let shipColor = "bg-slate-100 text-slate-600 border-slate-200";
-                   if (['DISPATCHED', 'INTRA_TRANSIT'].includes(shp.shipment_status_code)) shipColor = "bg-blue-100 text-blue-800 border-blue-200";
-                   if (['ARRIVED', 'RECEIVED'].includes(shp.shipment_status_code)) shipColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                   if (shp.shipment_status_code === 'DISPATCHED') shipColor = "bg-blue-100 text-blue-800 border-blue-200";
+                   if (['ARRIVED_DESTINATION', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED'].includes(shp.shipment_status_code)) {
+                      shipColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                   }
 
                    return (
                    <tr key={shp.id} className="hover:bg-slate-50 transition-colors group">

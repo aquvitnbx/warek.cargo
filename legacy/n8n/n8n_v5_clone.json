@@ -1,0 +1,879 @@
+[
+  {
+    "name": "My workflow 4 (Endpoint Nala V8)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "warekcargo-v4",
+          "options": {}
+        },
+        "id": "webhook-inbound",
+        "name": "Webhook",
+        "webhookId": "v4-webhook-h3spnoc7l",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={\n  \"phone\": \"{{$json.body.phone}}\",\n  \"pushName\": \"{{$json.body.pushName}}\",\n  \"message\": \"{{$json.body.message}}\",\n  \"messageType\": \"{{$json.body.messageType}}\",\n  \"isGroup\": \"{{$json.body.isGroup}}\",\n  \"isFromMe\": \"{{$json.body.isFromMe}}\"\n}"
+        },
+        "id": "edit-fields",
+        "name": "Edit Fields",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          200,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "cond-0",
+                "leftValue": "={{$json.messageType}}",
+                "rightValue": "text",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "pre-filter",
+        "name": "Pre-Filter Guardrail",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          400,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $json.phone, message: '\ud83e\udd16 Halo, format pesan Anda belum dikenali oleh sistem cek/pendaftaran resi kami.' } }}"
+        },
+        "id": "balas-prefilter",
+        "name": "Balas Pre-Filter",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          600,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const phoneRaw = ($json.phone || '');\nreturn [{\n  json: {\n    ...$json,\n    phone: phoneRaw.toString().replace(/^08/, '628').replace(/\\D/g, '')\n  }\n}];"
+        },
+        "id": "sanitasi-phone",
+        "name": "Sanitasi Phone",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          600,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "http://172.17.0.1:3000/api/v1/nala/session",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "phone",
+                "value": "={{ $json.phone }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-nala-api-key",
+                "value": "NalaWarekCargo2026_SecureM2M_Secret"
+              }
+            ]
+          }
+        },
+        "id": "api-get-session",
+        "name": "API GET Session",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          800,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://172.17.0.1:3000/api/v1/nala/interpret",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-nala-api-key",
+                "value": "NalaWarekCargo2026_SecureM2M_Secret"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { message: $('Sanitasi Phone').item.json.message, phone: $('Sanitasi Phone').item.json.phone, partial_data: Object.assign({}, $('API GET Session').item.json.data && $('API GET Session').item.json.data.partial_data ? $('API GET Session').item.json.data.partial_data : {}, $('API GET Session').item.json.data && $('API GET Session').item.json.data.recognized_name ? { recognized_name: $('API GET Session').item.json.data.recognized_name } : {}) } }}",
+          "options": {}
+        },
+        "id": "nala-interpret-api",
+        "name": "Nala Interpret API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1000,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ Object.assign({}, $json.data, { phone: $('Sanitasi Phone').item.json.phone, session_id: $('API GET Session').item.json.code === 'FOUND_ACTIVE_SESSION' ? $('API GET Session').item.json.data.session_id : undefined }) }}"
+        },
+        "id": "unwrap-json",
+        "name": "Unwrap JSON AI",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1200,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://172.17.0.1:3000/api/v1/nala/session",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-nala-api-key",
+                "value": "NalaWarekCargo2026_SecureM2M_Secret"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, intent: $('Unwrap JSON AI').item.json.intent, is_data_complete: $('Unwrap JSON AI').item.json.is_data_complete, session_id: $('Unwrap JSON AI').item.json.session_id || '', missing_critical_fields: $('Unwrap JSON AI').item.json.missing_critical_fields || [], partial_data: { hub_selection: $('Unwrap JSON AI').item.json.extracted_data && $('Unwrap JSON AI').item.json.extracted_data.hub_selection ? $('Unwrap JSON AI').item.json.extracted_data.hub_selection : null, customer_name: $('Unwrap JSON AI').item.json.extracted_data && $('Unwrap JSON AI').item.json.extracted_data.customer_name ? $('Unwrap JSON AI').item.json.extracted_data.customer_name : null, packages: $('Unwrap JSON AI').item.json.extracted_data && $('Unwrap JSON AI').item.json.extracted_data.packages ? $('Unwrap JSON AI').item.json.extracted_data.packages : [] } } }}"
+        },
+        "id": "api-post-session",
+        "name": "API POST Session",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1400,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-1",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "PROCEED_TO_INTAKE",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-2",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "PROCEED_TO_LOOKUP",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-3",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_ONBOARDING",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-4",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_RETURNING_ONBOARDING",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-5",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_HUB_CONFIRMATION",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-6",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_FIELD_EXPLANATION",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-7",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_CLARIFICATION",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {},
+                  "conditions": [
+                    {
+                      "id": "cond-8",
+                      "leftValue": "={{ $('Unwrap JSON AI').item.json.recommended_action }}",
+                      "rightValue": "REPLY_FALLBACK_ADMIN",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "fallbackOutput": 7
+        },
+        "id": "intent-switch",
+        "name": "Intent Switch",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.1,
+        "position": [
+          1600,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://172.17.0.1:3000/api/v1/nala/intake",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-nala-api-key",
+                "value": "NalaWarekCargo2026_SecureM2M_Secret"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, owner_name: $('Unwrap JSON AI').item.json.extracted_data.customer_name, hub_selection: $('Unwrap JSON AI').item.json.extracted_data.hub_selection, packages: $('Unwrap JSON AI').item.json.extracted_data.packages } }}",
+          "options": {}
+        },
+        "id": "api-internal-intake",
+        "name": "API Internal Intake",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          -300
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "http://172.17.0.1:3000/api/v1/nala/tracking",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "awb",
+                "value": "={{ $('Unwrap JSON AI').item.json.extracted_data && $('Unwrap JSON AI').item.json.extracted_data.packages && $('Unwrap JSON AI').item.json.extracted_data.packages.length > 0 ? $('Unwrap JSON AI').item.json.extracted_data.packages[0].tracking_number : '' }}"
+              },
+              {
+                "name": "phone",
+                "value": "={{ $('Sanitasi Phone').item.json.phone }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-nala-api-key",
+                "value": "NalaWarekCargo2026_SecureM2M_Secret"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "api-internal-tracking",
+        "name": "API Internal Tracking",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          -100
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {},
+            "conditions": [
+              {
+                "id": "cond-1",
+                "leftValue": "={{$json.error === undefined && $json.success !== false}}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "api-ok",
+        "name": "API OK?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          2000,
+          -200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: $json.human_message || 'Data telah tercatat, namun tidak ada pesan sapaan dari sistem.' } }}"
+        },
+        "id": "wablas-response",
+        "name": "Wablas Response Sender",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          2200,
+          -300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: '\ud83d\udd34 Mohon maaf, Nala saat ini tidak bisa terhubung dengan sistem pergudangan utama. Mohon coba lagi nanti.' } }}"
+        },
+        "id": "wablas-down",
+        "name": "Balas API Down",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          2200,
+          -100
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: $('Unwrap JSON AI').item.json.clarification_question } }}"
+        },
+        "id": "balas-clarification",
+        "name": "Balas Clarification",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          100
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: 'Halo \ud83d\udc4b\\nSaya Nala, asisten WarekCargo yang membantu proses pengiriman barang Anda.\\n\\nWarekCargo melayani pengiriman barang melalui hub penerimaan kami.\\nUntuk info cara kerja layanan, silakan baca panduan ini:\\nhttps://warekcargo.com/faq\\n\\nSebelum lanjut, paket Anda akan dikirim ke hub penerimaan yang mana?\\nPilih salah satu:\\n- Jakarta\\n- Surabaya\\n- Makassar' } }}"
+        },
+        "id": "node-396ctd90w",
+        "name": "Balas Onboarding Baku",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: 'Halo Bapak/Ibu ' + ($('API GET Session').item.json.data && $('API GET Session').item.json.data.recognized_name ? $('API GET Session').item.json.data.recognized_name : '') + ' \ud83d\udc4b\\nSenang bertutur sapa kembali bersama Anda di WarekCargo.\\n(Mohon abaikan jika nama kurang sesuai).\\n\\nApakah Anda ingin mengirim paket hari ini?\\nSilakan pilih hub penerimaan Anda terlebih dahulu:\\n- Jakarta\\n- Surabaya\\n- Makassar' } }}"
+        },
+        "id": "node-7nya97e93",
+        "name": "Balas Returning Onboarding",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: '*Alamat Hub Surabaya:*\\nAtas Nama : ' + ($('Unwrap JSON AI').item.json.extracted_data.customer_name ? $('Unwrap JSON AI').item.json.extracted_data.customer_name : 'Nama Anda') + ', Ibu Dinda\\nTlpn : 08113030523\\nPerumahaan permata wiyung regency\\nKav. 25\\nJL. Raya wiyung pratama\\nKec. Wiyung kota surabaya\\n\\nMohon lengkapi informasi berikut:\\n- Nama Pemilik Barang:\\n- Nomor Resi:\\n- Kota Tujuan:\\n- Isi Paket:' } }}"
+        },
+        "id": "node-9vit8shpy",
+        "name": "Balas Hub Confirmation",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://sby.wablas.com/api/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "h4fTIwq0YQYhnFDi29f8kRrYCKXy306gxZ5AzJ4LM3lkW9J9B4Pbe0i"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { phone: $('Sanitasi Phone').item.json.phone, message: 'Mohon maaf, saya belum bisa membantu menjawab pertanyaan Anda secara tepat.\\n\\nSilakan hubungi admin WarekCargo melalui WhatsApp berikut untuk bantuan langsung:\\nhttps://wa.me/6281310099141\\n\\nAgar lebih cepat dibantu, silakan sertakan pertanyaan Anda dan nomor resi jika sudah ada.' } }}"
+        },
+        "id": "node-0m0kkn08q",
+        "name": "Balas Fallback Admin",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1800,
+          600
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Pre-Filter Guardrail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pre-Filter Guardrail": {
+        "main": [
+          [
+            {
+              "node": "Sanitasi Phone",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Pre-Filter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sanitasi Phone": {
+        "main": [
+          [
+            {
+              "node": "API GET Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "API GET Session": {
+        "main": [
+          [
+            {
+              "node": "Nala Interpret API",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Unwrap JSON AI": {
+        "main": [
+          [
+            {
+              "node": "API POST Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "API POST Session": {
+        "main": [
+          [
+            {
+              "node": "Intent Switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Intent Switch": {
+        "main": [
+          [
+            {
+              "node": "API Internal Intake",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "API Internal Tracking",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Onboarding Baku",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Returning Onboarding",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Hub Confirmation",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Clarification",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Clarification",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas Fallback Admin",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "API Internal Intake": {
+        "main": [
+          [
+            {
+              "node": "API OK?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "API Internal Tracking": {
+        "main": [
+          [
+            {
+              "node": "API OK?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "API OK?": {
+        "main": [
+          [
+            {
+              "node": "Wablas Response Sender",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Balas API Down",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Nala Interpret API": {
+        "main": [
+          [
+            {
+              "node": "Unwrap JSON AI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": true,
+    "settings": {},
+    "id": "HVAsREvXXKB1oVro",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+]

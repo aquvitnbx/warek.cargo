@@ -1,6 +1,6 @@
 import db from './db';
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+
+(process as typeof process & { loadEnvFile?: (path: string) => void }).loadEnvFile?.('.env.local');
 
 async function run() {
   console.log("=== Menguji Koneksi ke VPS ===");
