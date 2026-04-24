@@ -20,7 +20,7 @@ export default function IntakeCorrectionForm({ packageData, isBound, customers, 
      if (res.success) {
         setFeedback({ type: 'success', msg: 'Data resi hulu dan jejak audit berhasil diperbarui!' });
      } else {
-        setFeedback({ type: 'error', msg: res.message });
+        setFeedback({ type: 'error', msg: res.message || 'Gagal memperbarui data intake.' });
      }
      setIsPending(false);
   };
@@ -37,7 +37,7 @@ export default function IntakeCorrectionForm({ packageData, isBound, customers, 
      if (res.success) {
         window.location.href = returnUrl;
      } else {
-        setFeedback({ type: 'error', msg: res.message });
+        setFeedback({ type: 'error', msg: res.message || 'Gagal melakukan void intake.' });
         setIsPending(false);
         setShowVoidConfirm(false);
      }

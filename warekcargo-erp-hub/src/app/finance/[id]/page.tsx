@@ -17,15 +17,17 @@ type ShipmentFinanceDetail = {
   id: string;
   shipment_code: string;
   payment_status_code: 'PENDING' | 'PARTIAL' | 'PAID' | 'REFUND_PENDING' | 'VOIDED' | 'CANCELLED';
+  shipment_status_code: string;
   total_weight_kg: number | null;
   total_volume_m3: number | null;
   full_name: string;
   whatsapp_number: string | null;
   destination_city: string;
   final_charge_amount: number | null;
+  amount_paid: number | null;
   origin_hub_id: string | null;
   service_type_code: string;
-  pricing_rate?: PricingRate;
+  pricing_rate: PricingRate | null;
 };
 
 type ShipmentPaymentHistory = {
@@ -67,7 +69,7 @@ export default async function FinanceDetailPage({ params }: { params: Promise<{ 
       LEFT JOIN shipping_batches b ON s.batch_id = b.id
       WHERE s.id = $1
     `, [shipmentId]);
-    shipment = resShp.rows[0] ?? null;
+    shipment = resShp.rows[0] ? { ...resShp.rows[0], pricing_rate: null } : null;
 
     if (shipment) {
       const queryPay = `
